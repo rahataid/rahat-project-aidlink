@@ -89,6 +89,7 @@ export const JOBS = {
     CREATE: 'rahat.jobs.safe_transaction.create',
     GET: 'rahat.jobs.safe_transaction.get',
     GET_PENDING: 'rahat.jobs.safe_transaction.get_pending',
+    GET_OWNERS:'rahat.jobs.safe_wallet.get_owner'
   },
 };
 
