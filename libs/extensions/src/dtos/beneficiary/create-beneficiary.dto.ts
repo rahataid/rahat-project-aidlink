@@ -11,5 +11,6 @@ export interface AssignBenfGroupToProject {
     id: number;
     uuid: string;
     name: string;
+    groupedBeneficiaries:any[]
   };
 }

@@ -23,7 +23,6 @@ export class BeneficiaryService {
     this.rsprisma = this.prisma.rsclient;
   }
   async create(dto: CreateBeneficiaryDto) {
-
     return this.prisma.beneficiary.create({
       data: dto,
     });
@@ -135,12 +134,23 @@ export class BeneficiaryService {
 
   async addGroupToProject(payload: AssignBenfGroupToProject) {
     const { beneficiaryGroupData } = payload;
-    return await this.prisma.beneficiaryGroups.create({
+
+    const beneficaryGroup = await this.prisma.beneficiaryGroups.create({
       data: {
         uuid: beneficiaryGroupData.uuid,
         name: beneficiaryGroupData.name,
       },
     });
+    const groupedBeneficiariesData =
+      beneficiaryGroupData?.groupedBeneficiaries?.map((d) => ({
+        beneficiaryGroupId: beneficiaryGroupData.uuid,
+        beneficiaryId: d?.beneficiaryId,
+      }));
+    await this.prisma.groupedBeneficiaries.createMany({
+      data: groupedBeneficiariesData,
+    });
+
+    return beneficaryGroup;
   }
 
   async getAllGroups(dto) {

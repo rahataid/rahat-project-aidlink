@@ -64,37 +64,57 @@ model Setting {
 model Beneficiary {
   id                      Int                       @id @default(autoincrement()) @db.Integer()
   uuid                    String                    @unique @db.Uuid()
-  walletAddress           String? @unique
+  walletAddress           String?                   @unique
   extras                  Json?
   type                    BeneficiaryType           @default(ENROLLED)
   isVerified              Boolean                   @default(false)
   DisbursementBeneficiary DisbursementBeneficiary[]
 
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime?                 @updatedAt
-  deletedAt               DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime?              @updatedAt
+  deletedAt            DateTime?
+  GroupedBeneficiaries GroupedBeneficiaries[]
 
   @@map(name: "tbl_beneficiaries")
 }
 
 model BeneficiaryGroups {
-  id                  Int     @id @default(autoincrement()) @db.Integer()
-  uuid                String  @unique @default(uuid()) @db.Uuid()
-  name                String
-
-  createdAt DateTime   @default(now())
-  updatedAt DateTime?  @updatedAt()
-  deletedAt DateTime?
-  Campaign  Campaign[]
+  id                   Int                    @id @default(autoincrement()) @db.Integer()
+  uuid                 String                 @unique @default(uuid()) @db.Uuid()
+  name                 String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime?              @updatedAt()
+  deletedAt            DateTime?
+  Campaign             Campaign[]
+  GroupedBeneficiaries GroupedBeneficiaries[]
 
   @@map("tbl_beneficiaries_groups")
+}
+
+model GroupedBeneficiaries {
+  id                 Int               @id @default(autoincrement()) @db.Integer()
+  uuid               String            @unique @default(uuid()) @db.Uuid()
+  beneficiaryGroupId String            @db.Uuid()
+  beneficiaryGroup   BeneficiaryGroups @relation(fields: [beneficiaryGroupId], references: [uuid])
+
+  beneficiaryId String      @db.Uuid()
+  beneficiary   Beneficiary @relation(fields: [beneficiaryId], references: [uuid])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt()
+  deletedAt     DateTime?
+
+  @@unique([beneficiaryGroupId, beneficiaryId], name: "beneficiaryGroupIdentifier")
+  @@index([beneficiaryGroupId])
+  @@index([beneficiaryId])
+  @@index([deletedAt])
+  @@map("tbl_grouped_beneficiaries")
 }
 
 model Campaign {
   id          Int     @id @default(autoincrement()) @db.Integer()
   uuid        String  @unique @default(uuid()) @db.Uuid()
   // TODO: remove campaignId
-  campaignId Int     @default(autoincrement()) 
+  campaignId  Int     @default(autoincrement())
   name        String
   message     String
   transportId String
@@ -124,19 +144,19 @@ model Disbursement {
 }
 
 model DisbursementBeneficiary {
-  id              Int          @id @default(autoincrement()) @db.Integer()
-  disbursementId  Int
-  beneficiaryWalletAddress   String
-  Disbursement    Disbursement @relation(fields: [disbursementId], references: [id])
-  Beneficiary     Beneficiary  @relation(fields: [beneficiaryWalletAddress], references: [walletAddress])
-  from            String?
-  amount          String
-  transactionHash String?
-  extras          Json?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime?    @updatedAt
+  id                       Int          @id @default(autoincrement()) @db.Integer()
+  disbursementId           Int
+  beneficiaryWalletAddress String
+  Disbursement             Disbursement @relation(fields: [disbursementId], references: [id])
+  Beneficiary              Beneficiary  @relation(fields: [beneficiaryWalletAddress], references: [walletAddress])
+  from                     String?
+  amount                   String
+  transactionHash          String?
+  extras                   Json?
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime?    @updatedAt
 
-  @@unique([disbursementId, beneficiaryWalletAddress]) 
+  @@unique([disbursementId, beneficiaryWalletAddress])
 }
 
 model Stats {
