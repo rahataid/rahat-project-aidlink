@@ -7,7 +7,7 @@ import {
   IsString,
 } from 'class-validator';
 import { UUID, randomUUID } from 'crypto';
-import { DisbursementStatus, DisbursementType } from '@prisma/client';
+import { DisbursementStatus, DisbursementType,DisbursementTargetType } from '@prisma/client';
 
 export type DisbursementBenefeciaryCreate = {
   amount: string;
@@ -19,31 +19,42 @@ export type DisbursementBenefeciaryCreate = {
 export class CreateDisbursementDto {
   @ApiProperty({
     example: '0x1234567890',
+    description: 'Source address for the disbursement',
   })
+  @IsString()
   from!: string;
 
   @ApiProperty({
-    example: 100,
+    example: '100',
+    description: 'Total amount for the disbursement',
   })
+  @IsString()
   amount!: string;
 
   @ApiProperty({
     example: '0x1234567890',
+    description: 'Transaction hash (optional for draft status)',
+    required: false,
   })
-  transactionHash!: string;
+  @IsString()
+  @IsOptional()
+  transactionHash?: string;
 
   @ApiProperty({
-    example: 'PENDING',
+    example: 'DRAFT',
+    description: 'Status of the disbursement',
   })
   @IsEnum(DisbursementStatus)
   status!: DisbursementStatus;
 
   @ApiProperty({
     example: '2021-10-01T00:00:00.000Z',
+    description: 'Timestamp for the disbursement',
+    required: false,
   })
   @IsString()
   @IsOptional()
-  timestamp!: string;
+  timestamp?: string;
 
   @ApiProperty({
     example: [
@@ -54,15 +65,36 @@ export class CreateDisbursementDto {
         walletAddress: '0x1234567890',
       },
     ],
+    description: 'Array of beneficiaries for individual disbursements',
+    required: false,
   })
   @IsArray()
-  beneficiaries!: DisbursementBenefeciaryCreate[];
+  @IsOptional()
+  beneficiaries?: DisbursementBenefeciaryCreate[];
 
   @ApiProperty({
     example: DisbursementType.MULTISIG,
+    description: 'Type of disbursement',
   })
   @IsEnum(DisbursementType)
   type!: DisbursementType;
+
+  @ApiProperty({
+    example: DisbursementTargetType.GROUP,
+    description: 'Target type for the disbursement (INDIVIDUAL, GROUP, or BOTH)',
+  })
+  @IsEnum(DisbursementTargetType)
+  disbursementType!: DisbursementTargetType;
+
+  @ApiProperty({
+    example: 'd0e9d07f-5cde-410f-b018-d862f593e362',
+    description: 'Beneficiary group UUID (required for GROUP disbursements)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  beneficiaryGroup?: string;
+
 }
 
 export class UpdateDisbursementDto {

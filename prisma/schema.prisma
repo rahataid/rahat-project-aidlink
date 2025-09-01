@@ -87,6 +87,7 @@ model BeneficiaryGroups {
   deletedAt            DateTime?
   Campaign             Campaign[]
   GroupedBeneficiaries GroupedBeneficiaries[]
+  Disbursement         DisbursementGroup[]
 
   @@map("tbl_beneficiaries_groups")
 }
@@ -102,6 +103,7 @@ model GroupedBeneficiaries {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt()
   deletedAt     DateTime?
+  
 
   @@unique([beneficiaryGroupId, beneficiaryId], name: "beneficiaryGroupIdentifier")
   @@index([beneficiaryGroupId])
@@ -132,7 +134,10 @@ model Campaign {
 model Disbursement {
   id                      Int                       @id @default(autoincrement()) @db.Integer()
   uuid                    String                    @unique @db.Uuid()
+  disbursementType        DisbursementTargetType   @default(NOT_ASSIGNED)
   DisbursementBeneficiary DisbursementBeneficiary[]
+  DisbursementGroup       DisbursementGroup[]
+  details                 String ? 
   type                    DisbursementType          @default(PROJECT)
   status                  DisbursementStatus        @default(DRAFT)
   timestamp               String?
@@ -157,6 +162,22 @@ model DisbursementBeneficiary {
   updatedAt                DateTime?    @updatedAt
 
   @@unique([disbursementId, beneficiaryWalletAddress])
+} 
+
+model DisbursementGroup{
+  id                     Int        @id @default(autoincrement()) @db.Integer()
+  disbursementId         Int 
+  beneficiaryGroup       String     @db.Uuid()
+  Disbursement           Disbursement @relation(fields: [disbursementId], references:[id])
+  BeneficiaryGroup       BeneficiaryGroups @relation(fields:[beneficiaryGroup], references:[uuid])
+  from                   String ?
+  amount                 String 
+  transactionHash        String ?
+  extras                 Json ?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime ?   @updatedAt
+
+  @@unique([disbursementId,beneficiaryGroup])
 }
 
 model Stats {
@@ -174,6 +195,13 @@ enum DisbursementType {
   PROJECT
   EOA
   MULTISIG
+}
+
+enum DisbursementTargetType {
+  NOT_ASSIGNED
+  INDIVIDUAL
+  GROUP
+  BOTH
 }
 
 enum DisbursementStatus {
