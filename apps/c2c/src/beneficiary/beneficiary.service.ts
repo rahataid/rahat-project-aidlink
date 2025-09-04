@@ -91,12 +91,18 @@ export class BeneficiaryService {
   }
 
   async findOne(payload) {
-    const { uuid, data } = payload;
+    const { uuid } = payload;
     const projectBendata = await this.prisma.beneficiary.findUnique({
       where: { uuid },
     });
-    if (data) return { ...data, ...projectBendata };
-    return projectBendata;
+    return this.client.send(
+      {
+        cmd: 'rahat.jobs.beneficiary.find_one_beneficiary',
+      },
+      projectBendata
+    );
+    // if (data) return { ...data, ...projectBendata };
+    // return projectBendata;
   }
 
   async update(id: number, updateBeneficiaryDto: UpdateBeneficiaryDto) {
