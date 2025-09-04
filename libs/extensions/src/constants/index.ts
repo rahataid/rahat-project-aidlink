@@ -35,7 +35,7 @@ export const JOBS = {
     CREATE: 'rahat.jobs.beneficiary.create',
     LIST: 'rahat.jobs.beneficiary.list',
     LIST_PROJECT_PII: 'rahat.jobs.beneficiary.list_project_pii',
-    GET: 'rahat.jobs.beneficiary.get',
+    GET: 'rahat.jobs.beneficiary.find_one_beneficiary',
     UPDATE: 'rahat.jobs.beneficiary.update',
     ADD_TO_PROJECT: 'rahat.jobs.beneficiary.add_to_project',
     BULK_ASSIGN_TO_PROJECT: 'rahat.jobs.beneficiary.bulk_assign',
