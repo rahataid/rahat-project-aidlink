@@ -43,6 +43,7 @@ export class DisbursementService {
         status,
         timestamp,
         type,
+        details,
       } = createDisbursementDto;
       let beneficiarydata = beneficiaries || [];
       let result;
@@ -81,6 +82,7 @@ export class DisbursementService {
             : amount,
           transactionHash,
           type,
+          details,
         },
       });
 

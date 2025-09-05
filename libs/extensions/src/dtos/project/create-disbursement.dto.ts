@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsEnum,
@@ -95,6 +95,13 @@ export class CreateDisbursementDto {
   @IsOptional()
   beneficiaryGroup?: string;
 
+  @ApiPropertyOptional({
+    example: 'Fund disbursement for project X',
+    description: 'Purpose of the disbursement',
+  })
+  @IsString()
+  @IsOptional()
+  details?: string;
 }
 
 export class UpdateDisbursementDto {
