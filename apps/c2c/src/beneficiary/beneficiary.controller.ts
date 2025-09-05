@@ -89,4 +89,16 @@ export class BeneficiaryController {
     return this.beneficiaryService.getOneGroup(payload.uuid);
   }
   // ***** groups end ********** //
+
+  //******Reporting Start *//
+  @MessagePattern({
+    cmd:JOBS.BENEFICIARY.GET_BEN_REPORTING_LOGS,
+    uuid: process.env.PROJECT_ID,
+  })
+
+  async getBeneficiaryLogs(payload){
+    return this.beneficiaryService.getBeneficiaryLogs(payload);
+  }
+
+  //******Reporting End *//
 }

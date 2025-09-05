@@ -185,4 +185,116 @@ export class BeneficiaryService {
       benfGroups
     );
   }
+
+
+  async getBeneficiaryLogs(data) {
+    try {
+      const {benDetails} = data;
+
+      const benUUIDs = benDetails?.map(item => 
+        item.uuid
+      ).filter(Boolean);
+
+      if (benUUIDs.length === 0) {
+        throw new Error('No valid benUUIDs found in the data array');
+      }
+
+      const beneficiaryDetails = await this.prisma.beneficiary.findMany({
+        where: { 
+          uuid: { in: benUUIDs } 
+        },
+        include: {
+          DisbursementBeneficiary: {
+            include: {
+              Disbursement: {
+                include: {
+                  DisbursementGroup: {
+                    include: {
+                      BeneficiaryGroup: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          GroupedBeneficiaries: {
+            include: {
+              beneficiaryGroup: {
+                include: {
+                  DisbursementGroup: {
+                    include: {
+                      Disbursement: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const beneficiaryMap = new Map();
+      beneficiaryDetails.forEach(ben => {
+        beneficiaryMap.set(ben.uuid, ben);
+      });
+
+      const combinedData = benDetails.map(item => {
+        const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
+        const beneficiaryDetails = beneficiaryMap.get(benUUID);
+
+        if (!beneficiaryDetails) {
+          console.warn(`Beneficiary with UUID ${benUUID} not found in database`);
+          return {
+            ...item,
+            beneficiary: null,
+            error: `Beneficiary with UUID ${benUUID} not found`
+          };
+        }
+
+        const individualDisbursements = beneficiaryDetails.DisbursementBeneficiary.reduce(
+          (sum, db) => sum + parseFloat(db.amount || '0'), 
+          0
+        );
+
+        const groupDisbursements = beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
+          const groupDisbAmount = gb.beneficiaryGroup.DisbursementGroup?.reduce(
+            (groupSum, dg) => groupSum + parseFloat(dg.amount || '0'), 
+            0
+          ) || 0;
+          return sum + groupDisbAmount;
+        }, 0);
+
+        const totalDisbursement = individualDisbursements > 0 ? individualDisbursements : groupDisbursements;
+
+        const individualDates = beneficiaryDetails.DisbursementBeneficiary.map(db => 
+          new Date(db.createdAt)
+        );
+        
+        const groupDates = beneficiaryDetails.GroupedBeneficiaries.flatMap(gb => 
+          gb.beneficiaryGroup.DisbursementGroup?.map(dg => new Date(dg.createdAt)) || []
+        );
+
+        const lastDisbursementDate = individualDates.length > 0 
+          ? new Date(Math.max(...individualDates.map(date => date.getTime())))
+          : groupDates.length > 0 
+            ? new Date(Math.max(...groupDates.map(date => date.getTime())))
+            : null;
+
+        return {
+          walletAddress: item.walletAddress,
+          name: item.pii.name,
+          phoneNumber:item.pii.phoneNumber,
+          totalDisbursement: totalDisbursement.toString(),
+          individualDisbursements: individualDisbursements.toString(),
+          groupDisbursements: groupDisbursements.toString(),
+          disbursementCount: beneficiaryDetails.DisbursementBeneficiary.length,
+          lastDisbursementDate: lastDisbursementDate?.toISOString() || null
+        };
+      });
+      return combinedData;
+    } catch (error) {
+      console.error('Error in getBeneficiaryLogs:', error);
+      throw error;
+    }
+  }
 }
