@@ -1,7 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { DisbursementStatus, DisbursementType, Prisma } from '@prisma/client';
+import {
+  DisbursementStatus,
+  DisbursementTargetType,
+  DisbursementType,
+  Prisma,
+} from '@prisma/client';
 import { EVENTS } from '@rahataid/c2c-extensions';
 import {
   DisbursementApprovalsDTO,
@@ -14,7 +19,6 @@ import { ProjectContants } from '@rahataid/sdk';
 import { PrismaService, paginator } from '@rumsan/prisma';
 import { randomUUID } from 'crypto';
 import { handleMicroserviceCall } from '../utils/handleMicroserviceCall';
-import { Decimal } from '@prisma/client/runtime/library';
 
 const paginate = paginator({ perPage: 20 });
 
@@ -39,85 +43,144 @@ export class DisbursementService {
         status,
         timestamp,
         type,
+        details,
       } = createDisbursementDto;
+      let beneficiarydata = beneficiaries || [];
+      let result;
 
+      if (createDisbursementDto.disbursementType === DisbursementTargetType.GROUP) {
+        if (!createDisbursementDto.beneficiaryGroup) {
+          throw new Error('beneficiaryGroup is required when targetType is GROUP');
+        }
+        
+        const response = await this.prisma.groupedBeneficiaries.findMany({
+          where: {
+            beneficiaryGroupId: createDisbursementDto.beneficiaryGroup,
+          },
+          include: {
+            beneficiary: true,
+          },
+        });
+        beneficiarydata = response.map((d) => {
+          return {
+            walletAddress: d.beneficiary.walletAddress,
+            from: from,
+            transactionHash,
+            amount,
+          };
+        });
+      }
       // Create disbursement
       const disbursement = await this.rsprisma.disbursement.create({
         data: {
           uuid: randomUUID(),
+          disbursementType: createDisbursementDto.disbursementType,
           status,
           timestamp,
-          amount: beneficiaries
-            .reduce((acc, curr) => acc + parseFloat(curr.amount), 0)
-            .toString(),
+          amount: beneficiarydata.length > 0 
+            ? beneficiarydata.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toString()
+            : amount,
           transactionHash,
           type,
+          details,
         },
       });
 
+      if (createDisbursementDto.disbursementType === DisbursementTargetType.GROUP) {
+        result = await this.rsprisma.disbursementGroup.upsert({
+          where: {
+           disbursementId_beneficiaryGroup:{ disbursementId: disbursement.id,
+            beneficiaryGroup: createDisbursementDto.beneficiaryGroup,}
+          },
+          update: {
+            amount: amount,
+            from,
+            transactionHash,
+          },
+          create: {
+            amount,
+            from,
+            transactionHash,
+            Disbursement: {
+              connect: { id: disbursement.id },
+            },
+            BeneficiaryGroup: {
+              connect: {
+                uuid: createDisbursementDto.beneficiaryGroup,
+              },
+            },
+          },
+        });
+
+      }
+
       // Create or connect beneficiaries to the disbursement
-      const result = await Promise.all(
-        beneficiaries.map(async (ben: DisbursementBenefeciaryCreate) => {
-          const disbursementBeneficiary =
-            await this.rsprisma.disbursementBeneficiary.upsert({
-              where: {
-                disbursementId_beneficiaryWalletAddress: {
-                  disbursementId: disbursement.id,
-                  beneficiaryWalletAddress: ben.walletAddress,
+      else if (createDisbursementDto.disbursementType === DisbursementTargetType.INDIVIDUAL) {
+        if (!beneficiaries || beneficiaries.length === 0) {
+          throw new Error('beneficiaries array is required when targetType is INDIVIDUAL');
+        }
+        
+        result = await Promise.all(
+          beneficiaries.map(async (ben: DisbursementBenefeciaryCreate) => {
+            const disbursementBeneficiary =
+              await this.rsprisma.disbursementBeneficiary.upsert({
+                where: {
+                  disbursementId_beneficiaryWalletAddress: {
+                    disbursementId: disbursement.id,
+                    beneficiaryWalletAddress: ben.walletAddress,
+                  },
                 },
-              },
-              update: {
-                amount: amount,
-                from,
-                transactionHash,
-              },
-              create: {
-                amount,
-                from,
-                transactionHash,
-                Disbursement: {
-                  connect: { id: disbursement.id },
+                update: {
+                  amount: amount,
+                  from,
+                  transactionHash,
                 },
-                Beneficiary: {
-                  connect: { walletAddress: ben.walletAddress },
+                create: {
+                  amount,
+                  from,
+                  transactionHash,
+                  Disbursement: {
+                    connect: { id: disbursement.id },
+                  },
+                  Beneficiary: {
+                    connect: { walletAddress: ben.walletAddress },
+                  },
                 },
-              },
-              include: {
-                Beneficiary: true,
-                Disbursement: true,
-              },
-            });
-          if (
-            disbursementBeneficiary.Disbursement.type ===
-            DisbursementType.PROJECT
-          ) {
-            await handleMicroserviceCall({
-              client: this.client.send(
-                { cmd: 'rahat.jobs.projects.send_disbursement_created_email' },
-                {
-                  walletAddress:
-                    disbursementBeneficiary.beneficiaryWalletAddress,
-                  amount: disbursementBeneficiary.amount,
-                }
-              ),
-              onSuccess(response) {
-                console.log('Email sent', response);
-                return response;
-              },
-              onError(error) {
-                console.log('Sending email failed: ' + error.message);
-              },
-            });
-          }
+                include: {
+                  Beneficiary: true,
+                  Disbursement: true,
+                },
+              });
+            if (
+              disbursementBeneficiary.Disbursement.type ===
+              DisbursementType.PROJECT
+            ) {
+              await handleMicroserviceCall({
+                client: this.client.send(
+                  {
+                    cmd: 'rahat.jobs.projects.send_disbursement_created_email',
+                  },
+                  {
+                    walletAddress:
+                      disbursementBeneficiary.beneficiaryWalletAddress,
+                    amount: disbursementBeneficiary.amount,
+                  }
+                ),
+                onSuccess(response) {
+                  console.log('Email sent', response);
+                  return response;
+                },
+                onError(error) {
+                  console.log('Sending email failed: ' + error.message);
+                },
+              });
+            }
 
-          return disbursementBeneficiary;
-        })
-      );
-
+          })
+        );
+      } 
       this.eventEmitter.emit(EVENTS.DISBURSEMENT_CREATE, {});
-
-      console.log({ result });
-      return result[0];
+      return result;
     } catch (error) {
       console.log(error);
       throw error; // Re-throw the error for better debugging

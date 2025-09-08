@@ -96,4 +96,15 @@ export class DisbursementController {
   getPendingSafeTransactions() {
     return this.disbursementMultisigService.getSafePendingTransactions();
   }
+
+
+  @MessagePattern({
+    cmd: JOBS.SAFE_TRANSACTION.GET_OWNERS,
+    uuid: process.env.PROJECT_ID,
+  })
+  getOwnersList() {
+    return this.disbursementMultisigService.getOwnersList();
+  }
 }
+
+

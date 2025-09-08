@@ -69,15 +69,32 @@ export class DisbursementMultisigService {
   }
 
   async getOwnersList() {
-    const SAFE_ADDRESS = await this.prisma.setting.findFirst({
-      where: {
-        name: 'SAFE_WALLET',
-      },
-    });
-    const { owners } = await this.safeApiKit.getSafeInfo(
-      SAFE_ADDRESS.value['ADDRESS']
-    );
-    return owners;
+    try {
+      const SAFE_ADDRESS = await this.prisma.setting.findFirst({
+        where: {
+          name: 'SAFE_WALLET',
+        },
+      });
+
+      const safeinstance = await this.getSafeInstance();
+
+      const balance = await safeinstance.getBalance();
+
+      const safeDetails = await this.safeApiKit.getSafeInfo(
+        SAFE_ADDRESS.value['ADDRESS']
+      );
+
+      const safeBalance = await this.safeApiKit.getTokenList();
+      const safeInfo = {
+        ...safeDetails,
+        nativeBalance: ethers.formatEther(balance),
+        token: safeBalance,
+      };
+
+      return safeInfo;
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   async getSafeTransaction(safeTxHash: string) {
@@ -135,7 +152,7 @@ export class DisbursementMultisigService {
   }
 
   async getTransactionApprovals(safeTxHash: string) {
-    const owners = await this.getOwnersList();
+    const { owners } = await this.getOwnersList();
     const { confirmations, confirmationsRequired, isExecuted, proposer } =
       await this.getSafeTransaction(safeTxHash);
     console.log({ owners });
