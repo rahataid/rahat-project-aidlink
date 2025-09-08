@@ -23,7 +23,7 @@ jobs:
 
       - name: install dependencies and build apps
         run: |
-          npm install -g pnpm@8.14.1 only-allow
+          npm install -g pnpm@10.12.1 only-allow
           pnpm install
           npx nx reset
           pnpm prisma:generate
