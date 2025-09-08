@@ -77,7 +77,7 @@
     "@rahataid/contracts": "0.0.4",
     "@rahataid/sdk": "0.0.20",
     "@rumsan/communication": "0.0.23",
-    "@rumsan/connect": "^1.0.3",
+    "@rumsan/connect": "1.0.3",
     "@rumsan/extensions": "0.0.21",
     "@rumsan/prisma": "1.0.131",
     "@rumsan/react-query": "0.0.38",
