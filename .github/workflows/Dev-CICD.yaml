@@ -8,10 +8,6 @@ on:
       - 'dev'
   workflow_dispatch:
 
-env:
-  CI: false
-  env_npmrc: ${{ secrets.ENV_NPMRC }}
-
 jobs:
   deploy:
     name: build && push image to Docker hub
@@ -20,10 +16,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: import env file
-        run: |
-          touch ./.npmrc && echo "$env_npmrc" >> ./.npmrc
 
       - uses: actions/setup-node@v3
         with:
@@ -46,12 +38,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # c2c Image
-      - name: build && push c2c
-        id: build-push-c2c
+      # aidlink Image
+      - name: build && push aidlink
+        id: build-push-aidlink
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile.c2c
           push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-          tags: esatya/rahat-project-c2c:dev
+          tags: esatya/rahat-project-aidlink:dev
