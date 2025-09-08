@@ -19,15 +19,39 @@ try {
 
   packageData.dependencies = {
     ...packageData.dependencies,
-    prisma: '^5.1.0',
-    'ts-node': '^10.9.1',
-    '@prisma/client': '^5.1.0',
+    // Prisma related
+    prisma: '^5.20.0',
+    '@prisma/client': '^5.20.0',
     'prisma-dbml-generator': '^0.12.0',
     'prisma-docs-generator': '^0.8.0',
     'prisma-json-schema-generator': '^5.1.1',
-    dotenv: '^16.4.4',
+    
+    // NestJS core dependencies
+    '@nestjs/common': '^10.3.7',
+    '@nestjs/core': '^10.3.7',
+    '@nestjs/microservices': '^10.3.7',
+    '@nestjs/config': '^3.2.0',
+    '@nestjs/platform-express': '^10.3.7',
+    '@nestjs/swagger': '^7.3.0',
+    '@nestjs/event-emitter': '^2.1.1',
+    
+    // Rahat/Rumsan packages
     '@rumsan/extensions': '^0.0.21',
-    'viem': "^2.10.2"
+    '@rumsan/prisma': '1.0.131',
+    '@rumsan/sdk': '^0.0.44',
+    '@rumsan/settings': '^0.0.108',
+    '@rumsan/communication': '0.0.23',
+    '@rahataid/sdk': '0.0.20',
+    
+    // Other runtime dependencies
+    'class-validator': '^0.14.1',
+    'reflect-metadata': '^0.1.14',
+    'rxjs': '^7.8.1',
+    'ts-node': '^10.9.1',
+    'dotenv': '^16.4.4',
+    'viem': '^2.10.2',
+    'ioredis': '^5.3.2',
+    'tslib': '^2.6.2'
   };
 
   packageData.prisma = {
