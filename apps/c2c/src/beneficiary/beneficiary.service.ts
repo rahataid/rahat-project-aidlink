@@ -10,6 +10,8 @@ import {
   VerifyWalletDto,
 } from '@rahataid/c2c-extensions/dtos/beneficiary';
 import { lastValueFrom } from 'rxjs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EVENTS } from '@rahataid/c2c-extensions/constants';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -18,18 +20,23 @@ export class BeneficiaryService {
   private rsprisma;
   constructor(
     protected prisma: PrismaService,
-    @Inject(ProjectContants.ELClient) private readonly client: ClientProxy // private eventEmitter: EventEmitter2
+    @Inject(ProjectContants.ELClient) private readonly client: ClientProxy,
+    private eventEmitter: EventEmitter2
   ) {
     this.rsprisma = this.prisma.rsclient;
   }
   async create(dto: CreateBeneficiaryDto) {
-    return this.prisma.beneficiary.create({
+    const ben = await this.prisma.beneficiary.create({
       data: dto,
     });
+    this.eventEmitter.emit(EVENTS.BENEFICIARY_CREATE, {});
+    return ben;
   }
 
   async createMany(dto) {
-    return this.prisma.beneficiary.createMany({ data: dto });
+    const bens = await this.prisma.beneficiary.createMany({ data: dto });
+    this.eventEmitter.emit(EVENTS.BENEFICIARY_CREATE, {});
+    return bens;
   }
 
   async findAll(dto) {
@@ -155,6 +162,8 @@ export class BeneficiaryService {
     await this.prisma.groupedBeneficiaries.createMany({
       data: groupedBeneficiariesData,
     });
+
+    this.eventEmitter.emit(EVENTS.BENEFICIARY_CREATE, {});
 
     return beneficaryGroup;
   }
