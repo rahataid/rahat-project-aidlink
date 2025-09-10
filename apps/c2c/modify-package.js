@@ -43,7 +43,8 @@ try {
     'ts-node': '^10.9.1',
     '@prisma/client': '^5.20.0',
     'dotenv': '^16.4.4',
-    "inquirer": "^12.6.1"
+    "inquirer": "^12.6.1",
+    "lodash": "^4.17.21"
   };
 
   packageData.prisma = {

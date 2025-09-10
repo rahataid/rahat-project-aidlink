@@ -1,12 +1,18 @@
 # Install dependencies only when needed
 FROM node:22.16.0-alpine AS deps
+# Install OpenSSL compatibility library for Prisma
+RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /usr/src/app
 COPY ./dist/apps/c2c/package.json ./
 RUN npm install -g pnpm && pnpm install
 
 FROM node:22.16.0-alpine AS builder
+# Install OpenSSL compatibility library for Prisma
+RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /usr/src/app
 COPY ./dist/apps/c2c/ ./
 COPY --from=deps /usr/src/app/node_modules ./node_modules
+# Set environment variable to use correct binary target for Alpine
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl
 RUN npm install -g pnpm@v10.12.1 && pnpm prisma generate
 CMD [ "node", "main.js" ]
