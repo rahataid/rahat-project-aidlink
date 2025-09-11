@@ -273,6 +273,19 @@ export class DisbursementService {
         },
         include: {
           DisbursementBeneficiary: true,
+          DisbursementGroup:{
+            include:{
+              BeneficiaryGroup:{
+                include:{
+                  GroupedBeneficiaries:{
+                    include:{
+                      beneficiary: true
+                    }
+                  }
+                }
+              }
+            }
+          },
           _count: {
             select: {
               DisbursementBeneficiary: true,
@@ -280,8 +293,38 @@ export class DisbursementService {
           },
         },
       });
+     const result = {
+      id:disbursement.id,
+      uuid:disbursement.uuid,
+      disbursementType:disbursement.disbursementType,
+      status:disbursement.status,
+      type:disbursement.type,
+      amount:disbursement.amount,
+      transactionHash:disbursement.transactionHash,
+      details:disbursement.details,
+      timestamp:disbursement.timestamp,
+      createdAt:disbursement.createdAt,
+      updatedAt:disbursement.updatedAt,
+      beneficiaries: disbursement.DisbursementBeneficiary?.length > 0 
+        ? disbursement.DisbursementBeneficiary.map(beneficiary => ({
+            id: beneficiary.id,
+            walletAddress: beneficiary.beneficiaryWalletAddress,
+            amount: beneficiary.amount,
+            from: beneficiary.from,
+            transactionHash: beneficiary.transactionHash,
+            createdAt: beneficiary.createdAt,
+            updatedAt: beneficiary.updatedAt,
+          }))
+        : disbursement?.DisbursementGroup?.[0]?.BeneficiaryGroup?.GroupedBeneficiaries?.map(ben => ({
+            id: ben.beneficiary.id,
+            uuid: ben.beneficiary.uuid,
+            walletAddress: ben.beneficiary.walletAddress,
+            createdAt: ben.createdAt,
+            updatedAt: ben.updatedAt,
+          })) || [],
+     }
 
-      return disbursement;
+      return result;
     } catch (error) {
       console.log(error);
       throw error;
