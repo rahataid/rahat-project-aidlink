@@ -104,7 +104,11 @@ export class DisbursementService {
             },
           },
           update: {
-            amount: amount,
+            amount: beneficiarydata.length > 0
+              ? beneficiarydata
+                  .reduce((acc, curr) => acc + parseFloat(curr.amount), 0)
+                  .toString()
+              : amount,
             from,
             transactionHash,
           },
@@ -166,35 +170,35 @@ export class DisbursementService {
                   Disbursement: true,
                 },
               });
-            if (
-              disbursementBeneficiary.Disbursement.type ===
-              DisbursementType.PROJECT
-            ) {
-              await handleMicroserviceCall({
-                client: this.client.send(
-                  {
-                    cmd: 'rahat.jobs.projects.send_disbursement_created_email',
-                  },
-                  {
-                    walletAddress:
-                      disbursementBeneficiary.beneficiaryWalletAddress,
-                    amount: disbursementBeneficiary.amount,
-                  }
-                ),
-                onSuccess(response) {
-                  console.log('Email sent', response);
-                  return response;
-                },
-                onError(error) {
-                  console.log('Sending email failed: ' + error.message);
-                },
-              });
-            }
+            // if (
+            //   disbursementBeneficiary.Disbursement.type ===
+            //   DisbursementType.PROJECT
+            // ) {
+            //   await handleMicroserviceCall({
+            //     client: this.client.send(
+            //       {
+            //         cmd: 'rahat.jobs.projects.send_disbursement_created_email',
+            //       },
+            //       {
+            //         walletAddress:
+            //           disbursementBeneficiary.beneficiaryWalletAddress,
+            //         amount: disbursementBeneficiary.amount,
+            //       }
+            //     ),
+            //     onSuccess(response) {
+            //       console.log('Email sent', response);
+            //       return response;
+            //     },
+            //     onError(error) {
+            //       console.log('Sending email failed: ' + error.message);
+            //     },
+            //   });
+            // }
           })
         );
       }
       this.eventEmitter.emit(EVENTS.DISBURSEMENT_CREATE, {});
-      return result;
+      return disbursement;
     } catch (error) {
       console.log(error);
       throw error; // Re-throw the error for better debugging
@@ -204,6 +208,15 @@ export class DisbursementService {
   async findAll() {
     const where: Prisma.DisbursementWhereInput = {};
     const include: Prisma.DisbursementInclude = {
+      DisbursementBeneficiary: {
+        include: {
+          Beneficiary: {
+            select: {
+              walletAddress: true,
+            },
+          },
+        },
+      },
       DisbursementGroup: {
         select: {
           BeneficiaryGroup: {
@@ -256,6 +269,7 @@ export class DisbursementService {
         createdAt: disbursement.createdAt,
         updatedAt: disbursement.updatedAt,
         totalBeneficiaries,
+        beneficiaryAddresses: disbursement.DisbursementBeneficiary?.map(db => db.Beneficiary?.walletAddress).filter(Boolean) || [],
       };
     });
 
