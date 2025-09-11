@@ -364,14 +364,14 @@ export class BeneficiaryService {
             : null;
 
         return {
-          walletAddress: item.walletAddress,
+          wallet_Address: item.walletAddress,
           name: item.pii.name,
-          phoneNumber:item.pii.phoneNumber,
-          totalDisbursement: totalDisbursement.toString(),
-          individualDisbursements: individualDisbursements.toString(),
-          groupDisbursements: groupDisbursements.toString(),
-          disbursementCount: beneficiaryDetails.DisbursementBeneficiary.length,
-          lastDisbursementDate: lastDisbursementDate?.toISOString() || null
+          phone_Number:item.pii.phone,
+          total_Disbursement: totalDisbursement.toString(),
+          // individualDisbursements: individualDisbursements.toString(),
+          // groupDisbursements: groupDisbursements.toString(),
+          // disbursementCount: beneficiaryDetails.DisbursementBeneficiary.length,
+          last_DisbursementDate: lastDisbursementDate?.toISOString() || null
         };
       });
       return combinedData;
