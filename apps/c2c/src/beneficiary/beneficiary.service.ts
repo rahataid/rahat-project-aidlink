@@ -112,7 +112,7 @@ export class BeneficiaryService {
             include: {
               beneficiaryGroup: {
                 include: {
-                  Disbursement: {
+                  DisbursementGroup: {
                     include: {
                       Disbursement: true,
                     },
@@ -160,15 +160,15 @@ export class BeneficiaryService {
             : Bendata.GroupedBeneficiaries.length > 0
             ? {
                 uuid: Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
-                  ?.Disbursement[0]?.Disbursement?.uuid,
+                  ?.DisbursementGroup[0]?.Disbursement?.uuid,
                 amount:
                   Number(
                     Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
-                      ?.Disbursement[0]?.Disbursement?.amount
+                      ?.DisbursementGroup[0]?.Disbursement?.amount
                   ) / totalBeneficiaries,
                 status:
                   Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
-                    ?.Disbursement[0]?.Disbursement?.status,
+                    ?.DisbursementGroup[0]?.Disbursement?.status,
               }
             : null,
       };
