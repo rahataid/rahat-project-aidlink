@@ -98,16 +98,90 @@ export class BeneficiaryService {
   }
 
   async findOne(payload) {
-    const { uuid } = payload;
-    const projectBendata = await this.prisma.beneficiary.findUnique({
-      where: { uuid },
-    });
-    return this.client.send(
-      {
-        cmd: 'rahat.jobs.beneficiary.find_one_beneficiary',
-      },
-      projectBendata
-    );
+    try {
+      const { uuid } = payload;
+      const Bendata = await this.prisma.beneficiary.findUnique({
+        where: { uuid },
+        include: {
+          DisbursementBeneficiary: {
+            include: {
+              Disbursement: true,
+            },
+          },
+          GroupedBeneficiaries: {
+            include: {
+              beneficiaryGroup: {
+                include: {
+                  Disbursement: {
+                    include: {
+                      Disbursement: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      let totalBeneficiaries = 0;
+
+      if (Bendata.GroupedBeneficiaries?.length > 0) {
+        const beneficiaryGroup =
+          Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup;
+        if (beneficiaryGroup) {
+          const groupCount = await this.prisma.groupedBeneficiaries.count({
+            where: {
+              beneficiaryGroupId: beneficiaryGroup.uuid,
+              deletedAt: null,
+            },
+          });
+          totalBeneficiaries = groupCount;
+        }
+      }
+
+      const projectBendata = {
+        uuid: Bendata.uuid,
+        walletAddress: Bendata.walletAddress,
+        GroupDetails:
+          Bendata.GroupedBeneficiaries.length > 0
+            ? {
+                name: Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup?.name,
+                totalBeneficiaries: totalBeneficiaries,
+              }
+            : null,
+        Disbursement:
+          Bendata.DisbursementBeneficiary.length > 0
+            ? {
+                uuid: Bendata.DisbursementBeneficiary[0]?.Disbursement.uuid,
+                amount: Bendata.DisbursementBeneficiary[0]?.Disbursement.amount,
+                status:
+                  Bendata.DisbursementBeneficiary[0]?.Disbursement?.status,
+              }
+            : Bendata.GroupedBeneficiaries.length > 0
+            ? {
+                uuid: Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
+                  ?.Disbursement[0]?.Disbursement?.uuid,
+                amount:
+                  Number(
+                    Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
+                      ?.Disbursement[0]?.Disbursement?.amount
+                  ) / totalBeneficiaries,
+                status:
+                  Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
+                    ?.Disbursement[0]?.Disbursement?.status,
+              }
+            : null,
+      };
+      return this.client.send(
+        {
+          cmd: 'rahat.jobs.beneficiary.find_one_beneficiary',
+        },
+        projectBendata
+      );
+    } catch (error) {
+      console.log(error);
+      throw new RpcException('Beneficiary not found.');
+    }
     // if (data) return { ...data, ...projectBendata };
     // return projectBendata;
   }
