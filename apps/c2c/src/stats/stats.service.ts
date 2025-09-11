@@ -3,6 +3,7 @@ import { ProjectContants } from '@rahataid/sdk';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { handleMicroserviceCall } from '../utils/handleMicroserviceCall';
+import { count } from 'console';
 
 @Injectable()
 export class StatsService {
@@ -34,6 +35,14 @@ export class StatsService {
     });
   }
 
+  async calculateBeneficiaryTotal() {
+    const beneficiary = await this.prismaService.beneficiary.count({});
+    return{
+      count: beneficiary,
+      id: 'ALL'
+    }
+  }
+
   async calculateDisbursementTotal() {
     const disbursement = await this.prismaService.disbursement.groupBy({
       by: ['type'],
@@ -41,6 +50,7 @@ export class StatsService {
         id: true,
       },
     });
+
 
     return disbursement.map((stats) => {
       return {
@@ -51,20 +61,27 @@ export class StatsService {
   }
 
   async calculateAllStats() {
-    const [totalDisbursement] = await Promise.all([
+    const [totalDisbursement,totalBen] = await Promise.all([
       this.calculateDisbursementTotal(),
+      this.calculateBeneficiaryTotal(),
     ]);
+
     return {
       totalDisbursement,
+      totalBen,
     };
   }
 
   async saveAllStats() {
-    const { totalDisbursement } = await this.calculateAllStats();
+    const { totalDisbursement, totalBen } = await this.calculateAllStats();
     await Promise.all([
       this.save({
         name: 'DISBURSEMENT_TOTAL',
         data: totalDisbursement,
+      }),
+      this.save({
+        name: 'BENEFICIARY_TOTAL',
+        data: totalBen,
       }),
     ]);
 

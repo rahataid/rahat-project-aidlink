@@ -7,6 +7,7 @@ export class ListenersService {
   constructor(private readonly statsService: StatsService) {}
 
   @OnEvent(EVENTS.DISBURSEMENT_CREATE)
+  @OnEvent(EVENTS.BENEFICIARY_CREATE)
   async onStatsUpdate() {
     console.log('********Stats Event triggered*******************');
     await this.statsService.saveAllStats();

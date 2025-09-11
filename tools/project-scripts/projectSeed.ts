@@ -26,9 +26,9 @@ const api = axios.create({
 const prisma = new PrismaService();
 const settings = new SettingsService(prisma);
 
-const contractName = ['C2CProject'];
+const contractName = ['C2CProject','RahatToken'];
 
-const rahatTokenDetails = {
+const rahatTokenData = {
   name: 'USD Coin',
   symbol: 'USDC',
   decimals: 18,
@@ -77,16 +77,16 @@ class SeedProject extends ContractLib {
     console.log('Rahat Token Details:', rahatTokenDetails);
 
     // console.log('----------Deploying Rahat Token-------------------');
-    // const TokenContract = await this.deployContract('RahatToken', [
-    //   rahatTokenDetails.name,
-    //   rahatTokenDetails.symbol,
-    //   deployerAccount.address,
-    //   rahatTokenDetails.decimals,
-    // ]);
-    // console.log({
-    //   TokenContract: TokenContract.contract.target,
-    //   blockNumber: TokenContract.blockNumber,
-    // });
+    const TokenContract = await this.deployContract('RahatToken', [
+      rahatTokenData.name,
+      rahatTokenData.symbol,
+      deployerAccount.address,
+      rahatTokenData.decimals,
+    ]);
+    console.log({
+      TokenContract: TokenContract.contract.target,
+      blockNumber: TokenContract.blockNumber,
+    });
 
     console.log('----------Deploying C2C Project Contract-------------------');
     const C2CProjectContract = await this.deployContract('C2CProject', [
@@ -106,10 +106,10 @@ class SeedProject extends ContractLib {
       `${__dirname}/${this.projectUUID}.json`,
       JSON.stringify(
         {
-          // RahatToken: {
-          //   address: TokenContract.contract.target,
-          //   startBlock: TokenContract.blockNumber,
-          // },
+          RahatToken: {
+            address: TokenContract.contract.target,
+            startBlock: TokenContract.blockNumber,
+          },
           C2CProject: {
             address: C2CProjectContract.contract.target,
             startBlock: C2CProjectContract.blockNumber,

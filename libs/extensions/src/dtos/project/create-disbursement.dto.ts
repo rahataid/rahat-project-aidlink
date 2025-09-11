@@ -1,10 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsEnum,
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
 } from 'class-validator';
 import { UUID, randomUUID } from 'crypto';
 import { DisbursementStatus, DisbursementType,DisbursementTargetType } from '@prisma/client';
@@ -95,6 +96,13 @@ export class CreateDisbursementDto {
   @IsOptional()
   beneficiaryGroup?: string;
 
+  @ApiPropertyOptional({
+    example: 'Fund disbursement for project X',
+    description: 'Purpose of the disbursement',
+  })
+  @IsString()
+  @IsOptional()
+  details?: string;
 }
 
 export class UpdateDisbursementDto {
@@ -113,7 +121,8 @@ export class DisbursementTransactionDto {
   @ApiProperty({
     example: randomUUID(),
   })
-  disbursementUUID!: UUID;
+  @IsUUID()
+  disbursementUUID!: string;
 }
 
 export class CreateSafeTransactionDto {

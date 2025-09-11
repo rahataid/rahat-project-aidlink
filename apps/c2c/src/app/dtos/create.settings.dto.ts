@@ -71,4 +71,8 @@ export class GetSettingDto{
   @IsString()
   @IsNotEmpty()
   name:string
+
+  @IsString()
+  @IsOptional()
+  projectId?:string
 }
