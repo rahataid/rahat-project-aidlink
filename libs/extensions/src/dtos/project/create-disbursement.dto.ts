@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
 } from 'class-validator';
 import { UUID, randomUUID } from 'crypto';
 import { DisbursementStatus, DisbursementType,DisbursementTargetType } from '@prisma/client';
@@ -120,7 +121,8 @@ export class DisbursementTransactionDto {
   @ApiProperty({
     example: randomUUID(),
   })
-  disbursementUUID!: UUID;
+  @IsUUID()
+  disbursementUUID!: string;
 }
 
 export class CreateSafeTransactionDto {

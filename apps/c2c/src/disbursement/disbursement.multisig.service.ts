@@ -90,7 +90,6 @@ export class DisbursementMultisigService {
         nativeBalance: ethers.formatEther(balance),
         token: safeBalance,
       };
-
       return safeInfo;
     } catch (err) {
       console.log(err);
@@ -152,23 +151,27 @@ export class DisbursementMultisigService {
   }
 
   async getTransactionApprovals(safeTxHash: string) {
-    const { owners } = await this.getOwnersList();
-    const { confirmations, confirmationsRequired, isExecuted, proposer } =
-      await this.getSafeTransaction(safeTxHash);
-    console.log({ owners });
-    const approvals = owners.map((owner) => {
-      const confirmation = confirmations?.find(
-        (confirmation) => confirmation.owner === owner
-      );
-      return {
-        owner,
-        submissionDate: confirmation?.submissionDate || null,
-        hasApproved: confirmation ? true : false,
-        ...confirmation,
-      };
-    });
-    console.log('approvals', approvals);
-    return { approvals, confirmationsRequired, isExecuted, proposer };
+    try {
+
+      const { owners } = await this.getOwnersList();
+      const { confirmations, confirmationsRequired, isExecuted, proposer } =
+        await this.getSafeTransaction(safeTxHash);
+      const approvals = owners.map((owner) => {
+        const confirmation = confirmations?.find(
+          (confirmation) => confirmation.owner === owner
+        );
+        return {
+          owner,
+          submissionDate: confirmation?.submissionDate || null,
+          hasApproved: confirmation ? true : false,
+          ...confirmation,
+        };
+      });
+      return { approvals, confirmationsRequired, isExecuted, proposer };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async getSafePendingTransactions() {

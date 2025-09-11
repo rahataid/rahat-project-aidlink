@@ -48,11 +48,15 @@ export class DisbursementService {
       let beneficiarydata = beneficiaries || [];
       let result;
 
-      if (createDisbursementDto.disbursementType === DisbursementTargetType.GROUP) {
+      if (
+        createDisbursementDto.disbursementType === DisbursementTargetType.GROUP
+      ) {
         if (!createDisbursementDto.beneficiaryGroup) {
-          throw new Error('beneficiaryGroup is required when targetType is GROUP');
+          throw new Error(
+            'beneficiaryGroup is required when targetType is GROUP'
+          );
         }
-        
+
         const response = await this.prisma.groupedBeneficiaries.findMany({
           where: {
             beneficiaryGroupId: createDisbursementDto.beneficiaryGroup,
@@ -77,20 +81,27 @@ export class DisbursementService {
           disbursementType: createDisbursementDto.disbursementType,
           status,
           timestamp,
-          amount: beneficiarydata.length > 0 
-            ? beneficiarydata.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toString()
-            : amount,
+          amount:
+            beneficiarydata.length > 0
+              ? beneficiarydata
+                  .reduce((acc, curr) => acc + parseFloat(curr.amount), 0)
+                  .toString()
+              : amount,
           transactionHash,
           type,
           details,
         },
       });
 
-      if (createDisbursementDto.disbursementType === DisbursementTargetType.GROUP) {
+      if (
+        createDisbursementDto.disbursementType === DisbursementTargetType.GROUP
+      ) {
         result = await this.rsprisma.disbursementGroup.upsert({
           where: {
-           disbursementId_beneficiaryGroup:{ disbursementId: disbursement.id,
-            beneficiaryGroup: createDisbursementDto.beneficiaryGroup,}
+            disbursementId_beneficiaryGroup: {
+              disbursementId: disbursement.id,
+              beneficiaryGroup: createDisbursementDto.beneficiaryGroup,
+            },
           },
           update: {
             amount: amount,
@@ -111,15 +122,19 @@ export class DisbursementService {
             },
           },
         });
-
       }
 
       // Create or connect beneficiaries to the disbursement
-      else if (createDisbursementDto.disbursementType === DisbursementTargetType.INDIVIDUAL) {
+      else if (
+        createDisbursementDto.disbursementType ===
+        DisbursementTargetType.INDIVIDUAL
+      ) {
         if (!beneficiaries || beneficiaries.length === 0) {
-          throw new Error('beneficiaries array is required when targetType is INDIVIDUAL');
+          throw new Error(
+            'beneficiaries array is required when targetType is INDIVIDUAL'
+          );
         }
-        
+
         result = await Promise.all(
           beneficiaries.map(async (ben: DisbursementBenefeciaryCreate) => {
             const disbursementBeneficiary =
@@ -175,10 +190,9 @@ export class DisbursementService {
                 },
               });
             }
-
           })
         );
-      } 
+      }
       this.eventEmitter.emit(EVENTS.DISBURSEMENT_CREATE, {});
       return result;
     } catch (error) {
@@ -190,13 +204,30 @@ export class DisbursementService {
   async findAll() {
     const where: Prisma.DisbursementWhereInput = {};
     const include: Prisma.DisbursementInclude = {
-      DisbursementBeneficiary: true,
+      DisbursementGroup: {
+        select: {
+          BeneficiaryGroup: {
+            select: {
+              _count: {
+                select: {
+                  GroupedBeneficiaries: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          DisbursementBeneficiary: true,
+        },
+      },
     };
     const orderBy: Prisma.DisbursementOrderByWithRelationInput = {
       createdAt: 'desc',
     };
 
-    return paginate(
+    const result = await paginate(
       this.rsprisma.disbursement,
       { where, include, orderBy },
       {
@@ -204,24 +235,57 @@ export class DisbursementService {
         perPage: 20,
       }
     );
+
+    const dataWithTotalCount = result.data.map((disbursement: any) => {
+      let totalBeneficiaries = disbursement._count.DisbursementBeneficiary;
+
+      disbursement.DisbursementGroup.forEach((group: any) => {
+        totalBeneficiaries += group.BeneficiaryGroup._count.GroupedBeneficiaries;
+      });
+
+      return {
+        id: disbursement.id,
+        uuid: disbursement.uuid,
+        disbursementType: disbursement.disbursementType,
+        status: disbursement.status,
+        type: disbursement.type,
+        amount: disbursement.amount,
+        transactionHash: disbursement.transactionHash,
+        details: disbursement.details,
+        timestamp: disbursement.timestamp,
+        createdAt: disbursement.createdAt,
+        updatedAt: disbursement.updatedAt,
+        totalBeneficiaries,
+      };
+    });
+
+    return {
+      ...result,
+      data: dataWithTotalCount,
+    };
   }
 
   async findOne(params: DisbursementTransactionDto) {
-    const disbursement = await this.rsprisma.disbursement.findUnique({
-      where: {
-        uuid: params.disbursementUUID,
-      },
-      include: {
-        DisbursementBeneficiary: true,
-        _count: {
-          select: {
-            DisbursementBeneficiary: true,
+    try {
+      const disbursement = await this.rsprisma.disbursement.findUnique({
+        where: {
+          uuid: params.disbursementUUID,
+        },
+        include: {
+          DisbursementBeneficiary: true,
+          _count: {
+            select: {
+              DisbursementBeneficiary: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return disbursement;
+      return disbursement;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async update(id: number, updateDisbursementDto: UpdateDisbursementDto) {
