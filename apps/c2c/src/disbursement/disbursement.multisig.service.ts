@@ -167,7 +167,7 @@ export class DisbursementMultisigService {
           ...confirmation,
         };
       });
-      return { approvals, confirmationsRequired, isExecuted, proposer };
+      return { approvals, confirmationsRequired, isExecuted, proposer, approvalsCount: confirmations.length };
     } catch (error) {
       console.log(error);
       throw error;
