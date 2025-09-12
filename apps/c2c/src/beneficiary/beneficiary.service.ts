@@ -208,15 +208,30 @@ export class BeneficiaryService {
         uuid: uuid,
         deletedAt: null,
       },
+      include:{
+        DisbursementGroup: {
+          include:{
+            Disbursement: true
+          }
+        }
+      }
     });
+
+    const disbursementAmount = benfGroup?.DisbursementGroup?.reduce((sum, dg) => {
+      return sum + parseFloat(dg.amount || '0');
+    }, 0);
     if (!benfGroup) throw new RpcException('Beneficiary group not found.');
 
-    return lastValueFrom(
+    const response =  await lastValueFrom(
       this.client.send(
         { cmd: 'rahat.jobs.beneficiary.get_one_group_by_project' },
-        benfGroup.uuid
+      benfGroup.uuid
       )
     );
+    return {
+      ...response,
+      disbursement: disbursementAmount || 0
+    }
   }
 
   async addGroupToProject(payload: AssignBenfGroupToProject) {

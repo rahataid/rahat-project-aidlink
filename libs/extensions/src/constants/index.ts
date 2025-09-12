@@ -44,6 +44,7 @@ export const JOBS = {
     GET_ONE_GROUP: 'rahat.jobs.beneficiary.getOneGroup',
     ADD_GROUP_TO_PROJECT: 'rahat.jobs.beneficiary.add_group_to_project',
     GET_BEN_REPORTING_LOGS: 'rahat.jobs.beneficiary.get_ben_reporting_logs',
+    GET_OFFRAMP_DETAILS: 'rahat.jobs.beneficiary.get_offramp_details',
   },
 
   PROJECT: {

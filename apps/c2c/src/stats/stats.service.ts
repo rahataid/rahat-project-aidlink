@@ -44,20 +44,30 @@ export class StatsService {
   }
 
   async calculateDisbursementTotal() {
-    const disbursement = await this.prismaService.disbursement.groupBy({
-      by: ['type'],
-      _count: {
-        id: true,
+    const disbursements = await this.prismaService.disbursement.findMany({
+      select: {
+        type: true,
+        amount: true,
       },
     });
+    const groupedStats = disbursements.reduce((acc, disbursement) => {
+      const type = disbursement.type;
+      if (!acc[type]) {
+        acc[type] = {
+          id: type,
+          count: 0,
+          amount: 0,
+        };
+      }
+      acc[type].count += 1;
+      acc[type].amount += parseFloat(disbursement.amount || '0');
+      return acc;
+    }, {} as Record<string, { id: string; count: number; amount: number }>);
 
+    const result = Object.values(groupedStats);
+    
 
-    return disbursement.map((stats) => {
-      return {
-        id: stats.type,
-        count: stats._count.id,
-      };
-    });
+    return result;
   }
 
   async calculateAllStats() {
