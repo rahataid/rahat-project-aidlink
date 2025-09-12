@@ -101,4 +101,16 @@ export class BeneficiaryController {
   }
 
   //******Reporting End *//
+
+
+  //******Xcapit Start ****//
+  @MessagePattern({
+    cmd:JOBS.BENEFICIARY.GET_OFFRAMP_DETAILS,
+    uuid: process.env.PROJECT_ID,
+  })
+  async getBeneficiaryOffRampDetails(payload){
+    const {beneficiaryPhone,limit} = payload;
+    return this.beneficiaryService.getBeneficiaryOffRampDetails(beneficiaryPhone,limit);
+  }
+  //******Xcapit End ****//
 }

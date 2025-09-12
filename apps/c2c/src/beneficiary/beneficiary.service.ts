@@ -12,6 +12,7 @@ import {
 import { lastValueFrom } from 'rxjs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
+import { getOffRampDetails } from '../utils/Xcapit';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -138,7 +139,6 @@ export class BeneficiaryService {
           totalBeneficiaries = groupCount;
         }
       }
-
       const projectBendata = {
         uuid: Bendata.uuid,
         walletAddress: Bendata.walletAddress,
@@ -267,6 +267,16 @@ export class BeneficiaryService {
       { cmd: 'rahat.jobs.beneficiary.list_group_by_project' },
       benfGroups
     );
+  }
+
+  async getBeneficiaryOffRampDetails(beneficiaryPhone: string, limit: number) {
+    try {
+      const data = await getOffRampDetails(beneficiaryPhone, limit);
+      return data;
+    }
+    catch(error){
+     throw  new Error(error?.response?.data?.error || error?.response?.data);
+    }
   }
 
 
