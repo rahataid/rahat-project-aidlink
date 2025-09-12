@@ -270,60 +270,61 @@ export class BeneficiaryService {
   }
 
 
-  async getBeneficiaryLogs(data) {
-    try {
-      const {benDetails} = data;
+   async getBeneficiaryLogs(data: any) {
+     try {
+       const {benDetails} = data;
 
       const benUUIDs = benDetails?.map(item => 
-        item.uuid
+        item.beneficiaryId
       ).filter(Boolean);
 
       if (benUUIDs.length === 0) {
         throw new Error('No valid benUUIDs found in the data array');
       }
 
-      const beneficiaryDetails = await this.prisma.beneficiary.findMany({
-        where: { 
-          uuid: { in: benUUIDs } 
-        },
-        include: {
-          DisbursementBeneficiary: {
-            include: {
-              Disbursement: {
-                include: {
-                  DisbursementGroup: {
-                    include: {
-                      BeneficiaryGroup: true
-                    }
-                  }
+       const beneficiaryDetails = await this.prisma.beneficiary.findMany({
+         where: { 
+           uuid: { in: benUUIDs } 
+         },
+         include: {
+           DisbursementBeneficiary: {
+             include: {
+               Disbursement: {
+                select:{
+                  amount: true,
                 }
-              }
-            }
-          },
-          GroupedBeneficiaries: {
-            include: {
-              beneficiaryGroup: {
-                include: {
-                  DisbursementGroup: {
-                    include: {
-                      Disbursement: true
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
+               }
+             }
+           },
+           GroupedBeneficiaries: {
+             include: {
+               beneficiaryGroup: {
+                 include: {
+                   DisbursementGroup: {
+                     include: {
+                       Disbursement: true
+                     }
+                   },
+                   _count: {
+                     select: {
+                       GroupedBeneficiaries: true
+                     }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       })
 
       const beneficiaryMap = new Map();
       beneficiaryDetails.forEach(ben => {
         beneficiaryMap.set(ben.uuid, ben);
       });
 
-      const combinedData = benDetails.map(item => {
-        const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
-        const beneficiaryDetails = beneficiaryMap.get(benUUID);
+       const combinedData = benDetails.map(item => {
+         const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
+         const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
 
         if (!beneficiaryDetails) {
           console.warn(`Beneficiary with UUID ${benUUID} not found in database`);
@@ -339,13 +340,18 @@ export class BeneficiaryService {
           0
         );
 
-        const groupDisbursements = beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
-          const groupDisbAmount = gb.beneficiaryGroup.DisbursementGroup?.reduce(
-            (groupSum, dg) => groupSum + parseFloat(dg.amount || '0'), 
-            0
-          ) || 0;
-          return sum + groupDisbAmount;
-        }, 0);
+
+         const groupDisbursements = beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
+           const groupDisbAmount = gb.beneficiaryGroup.DisbursementGroup?.reduce(
+             (groupSum, dg) => {
+               const totalBeneficiariesInGroup = gb.beneficiaryGroup._count?.GroupedBeneficiaries || 1;
+               const individualShare = parseFloat(dg.amount || '0') / totalBeneficiariesInGroup;
+               return Number(groupSum) + Number(individualShare);
+             }, 
+             0
+           ) || 0;
+           return sum + groupDisbAmount;
+         }, 0);
 
         const totalDisbursement = individualDisbursements > 0 ? individualDisbursements : groupDisbursements;
 
@@ -364,9 +370,9 @@ export class BeneficiaryService {
             : null;
 
         return {
-          wallet_Address: item.walletAddress,
-          name: item.pii.name,
-          phone_Number:item.pii.phone,
+          wallet_Address: item?.Beneficiary?.walletAddress,
+          name: item?.Beneficiary?.pii.name,
+          phone_Number:item?.Beneficiary?.pii.phone,
           total_Disbursement: totalDisbursement.toString(),
           // individualDisbursements: individualDisbursements.toString(),
           // groupDisbursements: groupDisbursements.toString(),
