@@ -20,7 +20,7 @@ export class DisbursementController {
     cmd: JOBS.DISBURSEMENT.CREATE,
     uuid: process.env.PROJECT_ID,
   })
-  create(@Payload() createDisbursementDto: CreateDisbursementDto) {
+  create(@Payload() createDisbursementDto: any) {
     return this.disbursementService.create(createDisbursementDto);
   }
 
@@ -44,7 +44,7 @@ export class DisbursementController {
     cmd: JOBS.DISBURSEMENT.UPDATE,
     uuid: process.env.PROJECT_ID,
   })
-  update(@Payload() updateDisbursementDto: UpdateDisbursementDto) {
+  update(@Payload() updateDisbursementDto: any) {
     return this.disbursementService.update(
       updateDisbursementDto.id,
       updateDisbursementDto

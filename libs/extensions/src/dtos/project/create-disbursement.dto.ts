@@ -106,8 +106,21 @@ export class CreateDisbursementDto {
 }
 
 export class UpdateDisbursementDto {
+  @ApiProperty({
+    example: 1
+  })
   id!: number;
-  amount!: string;
+
+  // @ApiProperty({
+  //   example:10
+  // })
+  // amount?: string;
+
+  @ApiProperty({
+    example: DisbursementStatus.COMPLETED
+  })
+  @IsEnum(DisbursementStatus)
+  status?:string;
 }
 
 export class DisbursementApprovalsDTO {

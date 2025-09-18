@@ -352,33 +352,33 @@ export class DisbursementService {
         data: { ...updateDisbursementDto },
       });
 
-      if (
-        disbursement.type === DisbursementType.MULTISIG &&
-        disbursement.status === DisbursementStatus.COMPLETED
-      ) {
-        const beneficiary =
-          await this.rsprisma.disbursementBeneficiary.findFirst({
-            where: {
-              disbursementId: id,
-            },
-          });
-        await handleMicroserviceCall({
-          client: this.client.send(
-            { cmd: 'rahat.jobs.projects.send_disbursement_created_email' },
-            {
-              walletAddress: beneficiary.beneficiaryWalletAddress,
-              amount: disbursement.amount,
-            }
-          ),
-          onSuccess(response) {
-            console.log('Email sent', response);
-            return response;
-          },
-          onError(error) {
-            console.log('Sending email failed: ' + error.message);
-          },
-        });
-      }
+      // if (
+      //   disbursement.type === DisbursementType.MULTISIG &&
+      //   disbursement.status === DisbursementStatus.COMPLETED
+      // ) {
+      //   const beneficiary =
+      //     await this.rsprisma.disbursementBeneficiary.findFirst({
+      //       where: {
+      //         disbursementId: id,
+      //       },
+      //     });
+      //   await handleMicroserviceCall({
+      //     client: this.client.send(
+      //       { cmd: 'rahat.jobs.projects.send_disbursement_created_email' },
+      //       {
+      //         walletAddress: beneficiary.beneficiaryWalletAddress,
+      //         amount: disbursement.amount,
+      //       }
+      //     ),
+      //     onSuccess(response) {
+      //       console.log('Email sent', response);
+      //       return response;
+      //     },
+      //     onError(error) {
+      //       console.log('Sending email failed: ' + error.message);
+      //     },
+      //   });
+      // }
 
       return disbursement;
     } catch (error) {
