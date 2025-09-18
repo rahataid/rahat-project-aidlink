@@ -405,7 +405,10 @@ export class BeneficiaryService {
           last_DisbursementDate: lastDisbursementDate?.toISOString() || null
         };
       });
-      return combinedData;
+      const finalData = combinedData.filter(
+        (item) => Object.keys(item).length > 0
+      );
+      return finalData;
     } catch (error) {
       console.error('Error in getBeneficiaryLogs:', error);
       throw error;
