@@ -44,7 +44,8 @@ try {
     '@prisma/client': '^5.20.0',
     'dotenv': '^16.4.4',
     "inquirer": "^12.6.1",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "axios": "^1.7.9",
   };
 
   packageData.prisma = {
