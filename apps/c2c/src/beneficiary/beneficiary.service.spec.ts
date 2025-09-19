@@ -4,6 +4,8 @@ import { PrismaService } from '@rumsan/prisma';
 import { randomUUID } from 'crypto';
 import { of } from 'rxjs';
 import { RpcException } from '@nestjs/microservices';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 
 // Define a mock type for PrismaService
 interface MockPrismaService {
@@ -56,6 +58,10 @@ describe('BeneficiaryService', () => {
     send: jest.fn(),
   };
 
+  const mockEventEmitter = {
+        emit: jest.fn(),
+    };
+
 
   jest.mock('@rumsan/prisma', () => ({
     paginator: jest.fn().mockReturnValue({
@@ -74,6 +80,8 @@ describe('BeneficiaryService', () => {
         BeneficiaryService,
         { provide: PrismaService, useValue: mockPrismaService }, // Use the mock directly
         { provide: 'EL_PROJECT_CLIENT', useValue: mockClient }, // Mock EL_PROJECT_CLIENT
+        { provide: EventEmitter2, useValue: mockEventEmitter },
+
       ],
     }).compile();
 
@@ -148,7 +156,8 @@ describe('BeneficiaryService', () => {
   });
 
   it('should add a group to project', async () => {
-    const payload = { beneficiaryGroupData: { id: 1, uuid: randomUUID(), name: 'Test Group' } };
+    const mockUUID = randomUUID();
+    const payload = { beneficiaryGroupData: { id: 1, uuid: randomUUID(), name: 'Test Group', groupedBeneficiaries:[mockUUID] } };
     prisma.beneficiaryGroups.create.mockResolvedValue(payload.beneficiaryGroupData);
     const result = await service.addGroupToProject(payload);
     expect(result).toEqual(payload.beneficiaryGroupData);

@@ -111,8 +111,11 @@ describe('DisbursementService', () => {
         const mockUUID = randomUUID();
         const mockDisbursement = { uuid: mockUUID, amount: '100' };
         prisma.rsclient.disbursement.findUnique.mockResolvedValue(mockDisbursement);
+        console.log({mockDisbursement})
 
         const result = await service.findOne({ disbursementUUID: mockUUID });
+
+        console.log({result})
         expect(result).toEqual(mockDisbursement);
         expect(prisma.rsclient.disbursement.findUnique).toHaveBeenCalledWith({
             where: { uuid: mockUUID },
@@ -121,7 +124,7 @@ describe('DisbursementService', () => {
     });
 
     it('should update a disbursement', async () => {
-        const updateDisbursementDto: UpdateDisbursementDto = { id: 2, amount: '200' };
+        const updateDisbursementDto: UpdateDisbursementDto = { id: 2, status:'Completed' };
         const mockId = 1;
         prisma.rsclient.disbursement.update.mockResolvedValue({ id: mockId, ...updateDisbursementDto });
 
@@ -148,6 +151,7 @@ describe('DisbursementService', () => {
             status: DisbursementStatus.PENDING,
             timestamp: new Date().toISOString(),
             type: 'MULTISIG',
+            disbursementType:'INDIVIDUAL'
         };
         const mockDisbursement = { id: 1, ...createDisbursementDto };
 
