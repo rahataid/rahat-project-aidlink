@@ -12,6 +12,7 @@ import {
 import { lastValueFrom } from 'rxjs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
+import { getOffRampDetails } from '../utils/Xcapit';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -112,7 +113,7 @@ export class BeneficiaryService {
             include: {
               beneficiaryGroup: {
                 include: {
-                  Disbursement: {
+                  DisbursementGroup: {
                     include: {
                       Disbursement: true,
                     },
@@ -138,7 +139,6 @@ export class BeneficiaryService {
           totalBeneficiaries = groupCount;
         }
       }
-
       const projectBendata = {
         uuid: Bendata.uuid,
         walletAddress: Bendata.walletAddress,
@@ -160,15 +160,15 @@ export class BeneficiaryService {
             : Bendata.GroupedBeneficiaries.length > 0
             ? {
                 uuid: Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
-                  ?.Disbursement[0]?.Disbursement?.uuid,
+                  ?.DisbursementGroup[0]?.Disbursement?.uuid,
                 amount:
                   Number(
                     Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
-                      ?.Disbursement[0]?.Disbursement?.amount
+                      ?.DisbursementGroup[0]?.Disbursement?.amount
                   ) / totalBeneficiaries,
                 status:
                   Bendata.GroupedBeneficiaries[0]?.beneficiaryGroup
-                    ?.Disbursement[0]?.Disbursement?.status,
+                    ?.DisbursementGroup[0]?.Disbursement?.status,
               }
             : null,
       };
@@ -208,15 +208,30 @@ export class BeneficiaryService {
         uuid: uuid,
         deletedAt: null,
       },
+      include:{
+        DisbursementGroup: {
+          include:{
+            Disbursement: true
+          }
+        }
+      }
     });
+
+    const disbursementAmount = benfGroup?.DisbursementGroup?.reduce((sum, dg) => {
+      return sum + parseFloat(dg.amount || '0');
+    }, 0);
     if (!benfGroup) throw new RpcException('Beneficiary group not found.');
 
-    return lastValueFrom(
+    const response =  await lastValueFrom(
       this.client.send(
         { cmd: 'rahat.jobs.beneficiary.get_one_group_by_project' },
-        benfGroup.uuid
+      benfGroup.uuid
       )
     );
+    return {
+      ...response,
+      disbursement: disbursementAmount || 0
+    }
   }
 
   async addGroupToProject(payload: AssignBenfGroupToProject) {
@@ -267,5 +282,136 @@ export class BeneficiaryService {
       { cmd: 'rahat.jobs.beneficiary.list_group_by_project' },
       benfGroups
     );
+  }
+
+  async getBeneficiaryOffRampDetails(beneficiaryPhone: string, limit: number) {
+    try {
+      const data = await getOffRampDetails(beneficiaryPhone, limit);
+      return data;
+    }
+    catch(error){
+     throw  new Error(error?.response?.data?.error || error?.response?.data);
+    }
+  }
+
+
+   async getBeneficiaryLogs(data: any) {
+     try {
+       const {benDetails} = data;
+
+      const benUUIDs = benDetails?.map(item => 
+        item.beneficiaryId
+      ).filter(Boolean);
+
+      if (benUUIDs.length === 0) {
+        throw new Error('No valid benUUIDs found in the data array');
+      }
+
+       const beneficiaryDetails = await this.prisma.beneficiary.findMany({
+         where: { 
+           uuid: { in: benUUIDs } 
+         },
+         include: {
+           DisbursementBeneficiary: {
+             include: {
+               Disbursement: {
+                select:{
+                  amount: true,
+                }
+               }
+             }
+           },
+           GroupedBeneficiaries: {
+             include: {
+               beneficiaryGroup: {
+                 include: {
+                   DisbursementGroup: {
+                     include: {
+                       Disbursement: true
+                     }
+                   },
+                   _count: {
+                     select: {
+                       GroupedBeneficiaries: true
+                     }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       })
+
+      const beneficiaryMap = new Map();
+      beneficiaryDetails.forEach(ben => {
+        beneficiaryMap.set(ben.uuid, ben);
+      });
+
+       const combinedData = benDetails.map(item => {
+         const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
+         const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
+
+        if (!beneficiaryDetails) {
+          console.warn(`Beneficiary with UUID ${benUUID} not found in database`);
+          return {
+            ...item,
+            beneficiary: null,
+            error: `Beneficiary with UUID ${benUUID} not found`
+          };
+        }
+
+        const individualDisbursements = beneficiaryDetails.DisbursementBeneficiary.reduce(
+          (sum, db) => sum + parseFloat(db.amount || '0'), 
+          0
+        );
+
+
+         const groupDisbursements = beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
+           const groupDisbAmount = gb.beneficiaryGroup.DisbursementGroup?.reduce(
+             (groupSum, dg) => {
+               const totalBeneficiariesInGroup = gb.beneficiaryGroup._count?.GroupedBeneficiaries || 1;
+               const individualShare = parseFloat(dg.amount || '0') / totalBeneficiariesInGroup;
+               return Number(groupSum) + Number(individualShare);
+             }, 
+             0
+           ) || 0;
+           return sum + groupDisbAmount;
+         }, 0);
+
+        const totalDisbursement = individualDisbursements > 0 ? individualDisbursements : groupDisbursements;
+
+        const individualDates = beneficiaryDetails.DisbursementBeneficiary.map(db => 
+          new Date(db.createdAt)
+        );
+        
+        const groupDates = beneficiaryDetails.GroupedBeneficiaries.flatMap(gb => 
+          gb.beneficiaryGroup.DisbursementGroup?.map(dg => new Date(dg.createdAt)) || []
+        );
+
+        const lastDisbursementDate = individualDates.length > 0 
+          ? new Date(Math.max(...individualDates.map(date => date.getTime())))
+          : groupDates.length > 0 
+            ? new Date(Math.max(...groupDates.map(date => date.getTime())))
+            : null;
+
+        return {
+          wallet_Address: item?.Beneficiary?.walletAddress,
+          name: item?.Beneficiary?.pii.name,
+          phone_Number:item?.Beneficiary?.pii.phone,
+          total_Disbursement: totalDisbursement.toString(),
+          // individualDisbursements: individualDisbursements.toString(),
+          // groupDisbursements: groupDisbursements.toString(),
+          // disbursementCount: beneficiaryDetails.DisbursementBeneficiary.length,
+          last_DisbursementDate: lastDisbursementDate?.toISOString() || null
+        };
+      });
+      const finalData = combinedData.filter(
+        (item) => Object.keys(item).length > 0
+      );
+      return finalData;
+    } catch (error) {
+      console.error('Error in getBeneficiaryLogs:', error);
+      throw error;
+    }
   }
 }
