@@ -109,19 +109,63 @@ describe('DisbursementService', () => {
 
     it('should find a disbursement by UUID', async () => {
         const mockUUID = randomUUID();
-        const mockDisbursement = { uuid: mockUUID, amount: '100' };
+        const mockDisbursement = { 
+            id: 1,
+            uuid: mockUUID, 
+            amount: '100',
+            disbursementType: 'INDIVIDUAL',
+            status: 'PENDING',
+            type: 'MULTISIG',
+            transactionHash: '0x123',
+            details: null,
+            timestamp: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            DisbursementBeneficiary: [],
+            DisbursementGroup: []
+        };
         prisma.rsclient.disbursement.findUnique.mockResolvedValue(mockDisbursement);
 
         const result = await service.findOne({ disbursementUUID: mockUUID });
-        expect(result).toEqual(mockDisbursement);
+
+        expect(result).toEqual({
+            id: 1,
+            uuid: mockUUID,
+            disbursementType: 'INDIVIDUAL',
+            status: 'PENDING',
+            type: 'MULTISIG',
+            amount: '100',
+            transactionHash: '0x123',
+            details: null,
+            timestamp: mockDisbursement.timestamp,
+            createdAt: mockDisbursement.createdAt,
+            updatedAt: mockDisbursement.updatedAt,
+            beneficiaries: []
+        });
         expect(prisma.rsclient.disbursement.findUnique).toHaveBeenCalledWith({
             where: { uuid: mockUUID },
-            include: { DisbursementBeneficiary: true, _count: { select: { DisbursementBeneficiary: true } } },
+            include: { 
+                DisbursementBeneficiary: true, 
+                DisbursementGroup: {
+                    include: {
+                        BeneficiaryGroup: {
+                            include: {
+                                GroupedBeneficiaries: {
+                                    include: {
+                                        beneficiary: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                _count: { select: { DisbursementBeneficiary: true } } 
+            },
         });
     });
 
     it('should update a disbursement', async () => {
-        const updateDisbursementDto: UpdateDisbursementDto = { id: 2, amount: '200' };
+        const updateDisbursementDto: UpdateDisbursementDto = { id: 2, status:'Completed' };
         const mockId = 1;
         prisma.rsclient.disbursement.update.mockResolvedValue({ id: mockId, ...updateDisbursementDto });
 
@@ -148,6 +192,7 @@ describe('DisbursementService', () => {
             status: DisbursementStatus.PENDING,
             timestamp: new Date().toISOString(),
             type: 'MULTISIG',
+            disbursementType:'INDIVIDUAL'
         };
         const mockDisbursement = { id: 1, ...createDisbursementDto };
 
