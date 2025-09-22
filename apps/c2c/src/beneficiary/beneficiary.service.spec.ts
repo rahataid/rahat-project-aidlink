@@ -24,6 +24,9 @@ interface MockPrismaService {
     findMany: jest.Mock;
     count: jest.Mock;
   };
+  groupedBeneficiaries: {
+    createMany: jest.Mock;
+  };
 }
 
 // Define a mock type for the client
@@ -51,6 +54,9 @@ describe('BeneficiaryService', () => {
       create: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(), 
+    },
+    groupedBeneficiaries: {
+      createMany: jest.fn(),
     },
   };
 
