@@ -88,7 +88,7 @@ model BeneficiaryGroups {
   deletedAt            DateTime?
   Campaign             Campaign[]
   GroupedBeneficiaries GroupedBeneficiaries[]
-  Disbursement         DisbursementGroup[]
+  DisbursementGroup    DisbursementGroup[]
 
   @@map("tbl_beneficiaries_groups")
 }

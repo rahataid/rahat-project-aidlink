@@ -89,4 +89,28 @@ export class BeneficiaryController {
     return this.beneficiaryService.getOneGroup(payload.uuid);
   }
   // ***** groups end ********** //
+
+  //******Reporting Start *//
+  @MessagePattern({
+    cmd:JOBS.BENEFICIARY.GET_BEN_REPORTING_LOGS,
+    uuid: process.env.PROJECT_ID,
+  })
+
+  async getBeneficiaryLogs(payload){
+    return this.beneficiaryService.getBeneficiaryLogs(payload);
+  }
+
+  //******Reporting End *//
+
+
+  //******Xcapit Start ****//
+  @MessagePattern({
+    cmd:JOBS.BENEFICIARY.GET_OFFRAMP_DETAILS,
+    uuid: process.env.PROJECT_ID,
+  })
+  async getBeneficiaryOffRampDetails(payload){
+    const {beneficiaryPhone,limit} = payload;
+    return this.beneficiaryService.getBeneficiaryOffRampDetails(beneficiaryPhone,limit);
+  }
+  //******Xcapit End ****//
 }
