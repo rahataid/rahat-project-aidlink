@@ -296,8 +296,11 @@ export class BeneficiaryService {
 
 
    async getBeneficiaryLogs(data: any) {
-     try {
-       const {benDetails} = data;
+    const {benDetails} = data;
+     try { 
+        if(benDetails.length === 0 ){
+       return []
+      }
 
       const benUUIDs = benDetails?.map(item => 
         item.beneficiaryId
