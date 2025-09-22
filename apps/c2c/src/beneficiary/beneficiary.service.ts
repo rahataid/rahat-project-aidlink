@@ -208,30 +208,33 @@ export class BeneficiaryService {
         uuid: uuid,
         deletedAt: null,
       },
-      include:{
+      include: {
         DisbursementGroup: {
-          include:{
-            Disbursement: true
-          }
-        }
-      }
+          include: {
+            Disbursement: true,
+          },
+        },
+      },
     });
 
-    const disbursementAmount = benfGroup?.DisbursementGroup?.reduce((sum, dg) => {
-      return sum + parseFloat(dg.amount || '0');
-    }, 0);
+    const disbursementAmount = benfGroup?.DisbursementGroup?.reduce(
+      (sum, dg) => {
+        return sum + parseFloat(dg.amount || '0');
+      },
+      0
+    );
     if (!benfGroup) throw new RpcException('Beneficiary group not found.');
 
-    const response =  await lastValueFrom(
+    const response = await lastValueFrom(
       this.client.send(
         { cmd: 'rahat.jobs.beneficiary.get_one_group_by_project' },
-      benfGroup.uuid
+        benfGroup.uuid
       )
     );
     return {
       ...response,
-      disbursement: disbursementAmount || 0
-    }
+      disbursement: disbursementAmount || 0,
+    };
   }
 
   async addGroupToProject(payload: AssignBenfGroupToProject) {
@@ -288,124 +291,134 @@ export class BeneficiaryService {
     try {
       const data = await getOffRampDetails(beneficiaryPhone, limit);
       return data;
-    }
-    catch(error){
-     throw  new Error(error?.response?.data?.error || error?.response?.data);
+    } catch (error) {
+      throw new Error(error?.response?.data?.error || error?.response?.data);
     }
   }
 
-
-   async getBeneficiaryLogs(data: any) {
-    const {benDetails} = data;
-     try { 
-        if(benDetails.length === 0 ){
-       return []
+  async getBeneficiaryLogs(data: any) {
+    try {
+      const { benDetails } = data;
+      if (benDetails.length === 0) {
+        return [];
       }
 
-      const benUUIDs = benDetails?.map(item => 
-        item.beneficiaryId
-      ).filter(Boolean);
+      const benUUIDs = benDetails
+        ?.map((item) => item.beneficiaryId)
+        .filter(Boolean);
 
       if (benUUIDs.length === 0) {
         throw new Error('No valid benUUIDs found in the data array');
       }
 
-       const beneficiaryDetails = await this.prisma.beneficiary.findMany({
-         where: { 
-           uuid: { in: benUUIDs } 
-         },
-         include: {
-           DisbursementBeneficiary: {
-             include: {
-               Disbursement: {
-                select:{
+      const beneficiaryDetails = await this.prisma.beneficiary.findMany({
+        where: {
+          uuid: { in: benUUIDs },
+        },
+        include: {
+          DisbursementBeneficiary: {
+            include: {
+              Disbursement: {
+                select: {
                   amount: true,
-                }
-               }
-             }
-           },
-           GroupedBeneficiaries: {
-             include: {
-               beneficiaryGroup: {
-                 include: {
-                   DisbursementGroup: {
-                     include: {
-                       Disbursement: true
-                     }
-                   },
-                   _count: {
-                     select: {
-                       GroupedBeneficiaries: true
-                     }
-                   }
-                 }
-               }
-             }
-           }
-         }
-       })
+                },
+              },
+            },
+          },
+          GroupedBeneficiaries: {
+            include: {
+              beneficiaryGroup: {
+                include: {
+                  DisbursementGroup: {
+                    include: {
+                      Disbursement: true,
+                    },
+                  },
+                  _count: {
+                    select: {
+                      GroupedBeneficiaries: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
 
       const beneficiaryMap = new Map();
-      beneficiaryDetails.forEach(ben => {
+      beneficiaryDetails.forEach((ben) => {
         beneficiaryMap.set(ben.uuid, ben);
       });
 
-       const combinedData = benDetails.map(item => {
-         const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
-         const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
+      const combinedData = benDetails.map((item) => {
+        const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
+        const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
 
         if (!beneficiaryDetails) {
-          console.warn(`Beneficiary with UUID ${benUUID} not found in database`);
+          console.warn(
+            `Beneficiary with UUID ${benUUID} not found in database`
+          );
           return {
             ...item,
             beneficiary: null,
-            error: `Beneficiary with UUID ${benUUID} not found`
+            error: `Beneficiary with UUID ${benUUID} not found`,
           };
         }
 
-        const individualDisbursements = beneficiaryDetails.DisbursementBeneficiary.reduce(
-          (sum, db) => sum + parseFloat(db.amount || '0'), 
-          0
+        const individualDisbursements =
+          beneficiaryDetails.DisbursementBeneficiary.reduce(
+            (sum, db) => sum + parseFloat(db.amount || '0'),
+            0
+          );
+
+        const groupDisbursements =
+          beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
+            const groupDisbAmount =
+              gb.beneficiaryGroup.DisbursementGroup?.reduce((groupSum, dg) => {
+                const totalBeneficiariesInGroup =
+                  gb.beneficiaryGroup._count?.GroupedBeneficiaries || 1;
+                const individualShare =
+                  parseFloat(dg.amount || '0') / totalBeneficiariesInGroup;
+                return Number(groupSum) + Number(individualShare);
+              }, 0) || 0;
+            return sum + groupDisbAmount;
+          }, 0);
+
+        const totalDisbursement =
+          individualDisbursements > 0
+            ? individualDisbursements
+            : groupDisbursements;
+
+        const individualDates = beneficiaryDetails.DisbursementBeneficiary.map(
+          (db) => new Date(db.createdAt)
         );
 
-
-         const groupDisbursements = beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
-           const groupDisbAmount = gb.beneficiaryGroup.DisbursementGroup?.reduce(
-             (groupSum, dg) => {
-               const totalBeneficiariesInGroup = gb.beneficiaryGroup._count?.GroupedBeneficiaries || 1;
-               const individualShare = parseFloat(dg.amount || '0') / totalBeneficiariesInGroup;
-               return Number(groupSum) + Number(individualShare);
-             }, 
-             0
-           ) || 0;
-           return sum + groupDisbAmount;
-         }, 0);
-
-        const totalDisbursement = individualDisbursements > 0 ? individualDisbursements : groupDisbursements;
-
-        const individualDates = beneficiaryDetails.DisbursementBeneficiary.map(db => 
-          new Date(db.createdAt)
-        );
-        
-        const groupDates = beneficiaryDetails.GroupedBeneficiaries.flatMap(gb => 
-          gb.beneficiaryGroup.DisbursementGroup?.map(dg => new Date(dg.createdAt)) || []
+        const groupDates = beneficiaryDetails.GroupedBeneficiaries.flatMap(
+          (gb) =>
+            gb.beneficiaryGroup.DisbursementGroup?.map(
+              (dg) => new Date(dg.createdAt)
+            ) || []
         );
 
-        const lastDisbursementDate = individualDates.length > 0 
-          ? new Date(Math.max(...individualDates.map(date => date.getTime())))
-          : groupDates.length > 0 
-            ? new Date(Math.max(...groupDates.map(date => date.getTime())))
+        const lastDisbursementDate =
+          individualDates.length > 0
+            ? new Date(
+                Math.max(...individualDates.map((date) => date.getTime()))
+              )
+            : groupDates.length > 0
+            ? new Date(Math.max(...groupDates.map((date) => date.getTime())))
             : null;
 
         return {
           wallet_Address: item?.Beneficiary?.walletAddress,
           name: item?.Beneficiary?.pii.name,
-          phone_Number:item?.Beneficiary?.pii.phone,
+          phone_Number: item?.Beneficiary?.pii.phone,
           total_Disbursement: totalDisbursement.toString(),
           // individualDisbursements: individualDisbursements.toString(),
           // groupDisbursements: groupDisbursements.toString(),
           // disbursementCount: beneficiaryDetails.DisbursementBeneficiary.length,
-          last_DisbursementDate: lastDisbursementDate?.toISOString() || null
+          last_DisbursementDate: lastDisbursementDate?.toISOString() || null,
         };
       });
       const finalData = combinedData.filter(
