@@ -291,8 +291,9 @@ export class BeneficiaryService {
     try {
       const data = await getOffRampDetails(beneficiaryPhone, limit);
       return data;
-    } catch (error) {
-      throw new Error(error?.response?.data?.error || error?.response?.data);
+    }
+    catch(error){
+     throw  new RpcException(error?.response?.data?.error || error?.response?.data);
     }
   }
 
@@ -426,7 +427,7 @@ export class BeneficiaryService {
       );
       return finalData;
     } catch (error) {
-      console.error('Error in getBeneficiaryLogs:', error);
+      // console.error('Error in getBeneficiaryLogs:', error);
       throw error;
     }
   }
