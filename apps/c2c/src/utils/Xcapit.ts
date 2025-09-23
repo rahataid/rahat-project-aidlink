@@ -27,7 +27,6 @@ async function getAxiiosClient(){
         password: PASSWORD,
     });
     const token = response.data.token;
-  
     // Add a request interceptor
     axiosInstance.interceptors.request.use(async (req)=>{
         req.headers.Authorization = `Bearer ${token}`;
