@@ -103,7 +103,6 @@ export class DisbursementMultisigService {
 
   async createSafeTransaction(payload: CreateSafeTransactionDto) {
     try {
-      console.log('creatin tx');
       const transactionData = await this.generateTransactionData(
         payload.amount
       );

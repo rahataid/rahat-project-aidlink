@@ -113,4 +113,19 @@ export class BeneficiaryController {
     return this.beneficiaryService.getBeneficiaryOffRampDetails(beneficiaryPhone,limit);
   }
   //******Xcapit End ****//
+
+  
+  //********Disbursement details *********//
+  @MessagePattern({
+    cmd:JOBS.BENEFICIARY.GET_BEN_DISBURSEMENT,
+    uuid:process.env.PROJECT_ID,
+  })
+  async getBenDisbursementDetails(payload){
+    console.log(payload)
+    return this.beneficiaryService.getBenDisbursementDetails(payload);
+  }
+  //************Disbursement End **********//
+
+  
+
 }
