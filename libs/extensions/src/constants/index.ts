@@ -87,6 +87,7 @@ export const JOBS = {
     UPDATE: 'rahat.jobs.disbursement.update',
     DISBURSEMENT_TRANSACTION: 'rahat.jobs.disbursement.transactions.get',
     DISBURSEMENT_APPROVAL: 'rahat.jobs.disbursement.approvals.get',
+    DISBURSEMENT_BALANCE_CHART:'rahat.jobs.disbursement.balance.get'
   },
   SAFE_TRANSACTION: {
     CREATE: 'rahat.jobs.safe_transaction.create',

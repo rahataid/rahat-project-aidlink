@@ -105,6 +105,15 @@ export class DisbursementController {
   getOwnersList() {
     return this.disbursementMultisigService.getOwnersList();
   }
+
+  @MessagePattern({
+    cmd:JOBS.DISBURSEMENT.DISBURSEMENT_BALANCE_CHART,
+    uuid: process.env.PROJECT_ID,
+    
+  })
+  getDisbursementSafeBalanceChart(){
+    return this.disbursementMultisigService.getDisbursementSafeBalanceChart();
+  }
 }
 
 

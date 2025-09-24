@@ -8,9 +8,10 @@ import {
 import { PrismaService } from '@rumsan/prisma';
 import { ethers, JsonRpcApiProvider, JsonRpcProvider } from 'ethers';
 import { erc20Abi } from '../utils/constant';
-import { getWalletFromPrivateKey } from '../utils/web3';
+import { createContractInstance, getWalletFromPrivateKey } from '../utils/web3';
 import { get } from 'http';
 import { CreateSafeTransactionDto } from '@rahataid/c2c-extensions/dtos';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DisbursementMultisigService {
@@ -151,7 +152,6 @@ export class DisbursementMultisigService {
 
   async getTransactionApprovals(safeTxHash: string) {
     try {
-
       const { owners } = await this.getOwnersList();
       const { confirmations, confirmationsRequired, isExecuted, proposer } =
         await this.getSafeTransaction(safeTxHash);
@@ -166,7 +166,13 @@ export class DisbursementMultisigService {
           ...confirmation,
         };
       });
-      return { approvals, confirmationsRequired, isExecuted, proposer, approvalsCount: confirmations.length };
+      return {
+        approvals,
+        confirmationsRequired,
+        isExecuted,
+        proposer,
+        approvalsCount: confirmations.length,
+      };
     } catch (error) {
       console.log(error);
       throw error;
@@ -184,5 +190,39 @@ export class DisbursementMultisigService {
     );
 
     return pendingTransaction;
+  }
+
+  async getDisbursementSafeBalanceChart() {
+    try {
+      const SAFE_ADDRESS = await this.prisma.setting.findFirst({
+        where: {
+          name: 'SAFE_WALLET',
+        },
+      });
+
+      const address = SAFE_ADDRESS.value['ADDRESS'];
+
+      const contract = await createContractInstance(
+        'RAHATTOKEN',
+        this.prisma.setting
+      );
+      const balance = await contract.balanceOf.staticCall(address);
+
+      const disbursements = await this.prisma.disbursement.findMany({
+        select: {
+          amount: true,
+        },
+      });
+      const disbursementAmount = disbursements.reduce((sum, d) => {
+        return sum + (parseFloat(d.amount) || 0);
+      }, 0);
+      const safeBalance = ethers.formatEther(balance);
+      return {
+        safeBalance,
+        disbursementAmount,
+      };
+    } catch (err) {
+      throw new RpcException(err);
+    }
   }
 }
