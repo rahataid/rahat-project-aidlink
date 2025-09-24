@@ -4,6 +4,7 @@ import { ProjectContants } from '@rahataid/sdk';
 import { PrismaService } from '@rumsan/prisma';
 import { BeneficiaryController } from './beneficiary.controller';
 import { BeneficiaryService } from './beneficiary.service';
+import { DisbursementMultisigService } from '../disbursement/disbursement.multisig.service';
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import { BeneficiaryService } from './beneficiary.service';
     ]),
   ],
   controllers: [BeneficiaryController],
-  providers: [BeneficiaryService, PrismaService],
+  providers: [BeneficiaryService, PrismaService,DisbursementMultisigService],
 })
 export class BeneficiaryModule {}

@@ -28,8 +28,8 @@ export class DisbursementController {
     cmd: JOBS.DISBURSEMENT.LIST,
     uuid: process.env.PROJECT_ID,
   })
-  findAll() {
-    return this.disbursementService.findAll();
+  findAll(query) {
+    return this.disbursementService.findAll(query);
   }
 
   @MessagePattern({
@@ -104,6 +104,15 @@ export class DisbursementController {
   })
   getOwnersList() {
     return this.disbursementMultisigService.getOwnersList();
+  }
+
+  @MessagePattern({
+    cmd:JOBS.DISBURSEMENT.DISBURSEMENT_BALANCE_CHART,
+    uuid: process.env.PROJECT_ID,
+    
+  })
+  getDisbursementSafeBalanceChart(){
+    return this.disbursementMultisigService.getDisbursementSafeBalanceChart();
   }
 }
 
