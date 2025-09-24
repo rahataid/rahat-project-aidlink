@@ -5,6 +5,7 @@ import { DisbursementService } from './disbursement.service';
 import {
   CreateDisbursementDto,
   DisbursementTransactionDto,
+  ListDisbursementDto,
   UpdateDisbursementDto,
 } from '@rahataid/c2c-extensions/dtos';
 import { DisbursementMultisigService } from './disbursement.multisig.service';
@@ -28,7 +29,7 @@ export class DisbursementController {
     cmd: JOBS.DISBURSEMENT.LIST,
     uuid: process.env.PROJECT_ID,
   })
-  findAll(query) {
+  findAll(query:ListDisbursementDto) {
     return this.disbursementService.findAll(query);
   }
 
