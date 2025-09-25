@@ -9,7 +9,6 @@ import { PrismaService } from '@rumsan/prisma';
 import { ethers, JsonRpcApiProvider, JsonRpcProvider } from 'ethers';
 import { erc20Abi } from '../utils/constant';
 import { createContractInstance, getWalletFromPrivateKey } from '../utils/web3';
-import { get } from 'http';
 import { CreateSafeTransactionDto } from '@rahataid/c2c-extensions/dtos';
 import { RpcException } from '@nestjs/microservices';
 
@@ -36,7 +35,7 @@ export class DisbursementMultisigService {
       erc20Abi,
       new JsonRpcProvider(process.env.NETWORK_PROVIDER)
     );
-    // getWalletFromPrivateKey(process.env.DEPLOYER_PRIVATE_KEY));
+    // getWalletFromPrivateKey(process.env.SAFE_PROPOSER_PRIVATE_ADDRESS));
     const decimals = await tokenContract.decimals();
     const tokenApprovalEncodedData = tokenContract.interface.encodeFunctionData(
       'approve',
@@ -63,7 +62,7 @@ export class DisbursementMultisigService {
     });
     const safeKit = await Safe.init({
       provider: process.env.NETWORK_PROVIDER,
-      signer: process.env.DEPLOYER_PRIVATE_KEY,
+      signer: process.env.SAFE_PROPOSER_PRIVATE_ADDRESS,
       safeAddress: SAFE_ADDRESS.value['ADDRESS'],
     });
     return safeKit;
@@ -115,7 +114,7 @@ export class DisbursementMultisigService {
       const safeTxHash = await safeWallet.getTransactionHash(safeTransaction);
       const signature = await safeWallet.signHash(safeTxHash);
       const deployerWallet = getWalletFromPrivateKey(
-        process.env.DEPLOYER_PRIVATE_KEY
+        process.env.SAFE_PROPOSER_PRIVATE_ADDRESS
       );
       const safeAddress = await safeWallet.getAddress();
 
