@@ -14,6 +14,7 @@ import {
   UpdateDisbursementDto,
   DisbursementTransactionDto,
   DisbursementBenefeciaryCreate,
+  ListDisbursementDto,
 } from '@rahataid/c2c-extensions/dtos';
 import { ProjectContants } from '@rahataid/sdk';
 import { PrismaService, paginator } from '@rumsan/prisma';
@@ -206,10 +207,19 @@ export class DisbursementService {
     }
   }
 
-  async findAll(query) {
-    console.log(query);
+  async findAll(query: ListDisbursementDto) {
     const where: Prisma.DisbursementWhereInput = {};
-    if (query?.status) where.status = query.status;
+    if (query?.status) where.status = query?.status;
+    if (query?.disbursementType)
+      where.disbursementType = query?.disbursementType;
+    if (query?.fromDate || query?.toDate) {
+      where.createdAt = {};
+      if (query?.fromDate) where.createdAt.gte = new Date(query?.fromDate);
+      if (query?.toDate) {
+        where.createdAt.lte = new Date(query?.toDate);
+      }
+    }
+
     const include: Prisma.DisbursementInclude = {
       DisbursementBeneficiary: {
         include: {
@@ -247,8 +257,8 @@ export class DisbursementService {
       this.rsprisma.disbursement,
       { where, include, orderBy },
       {
-        page: 1,
-        perPage: 20,
+        page: query.page || 1,
+        perPage: query?.perPage || 20,
       }
     );
 
