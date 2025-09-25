@@ -219,8 +219,10 @@ export class DisbursementMultisigService {
       const safeBalance = Number(ethers.formatEther(balance));
       const totalBalance = Number(safeBalance + disbursementAmount);
       return {
-        safeBalance: (safeBalance / totalBalance) * 100,
-        disbursementAmount: (disbursementAmount / totalBalance) * 100,
+        safeBalance: ((safeBalance / totalBalance) * 100).toFixed(2),
+        disbursementAmount: ((disbursementAmount / totalBalance) * 100).toFixed(
+          2
+        ),
       };
     } catch (err) {
       throw new RpcException(err);
