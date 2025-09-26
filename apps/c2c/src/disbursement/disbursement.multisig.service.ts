@@ -221,10 +221,13 @@ export class DisbursementMultisigService {
       const disbursementAmount = disbursements.reduce((sum, d) => {
         return sum + (parseFloat(d.amount) || 0);
       }, 0);
-      const safeBalance = ethers.formatEther(balance);
+      const safeBalance = Number(ethers.formatEther(balance));
+      const totalBalance = Number(safeBalance + disbursementAmount);
       return {
-        safeBalance,
-        disbursementAmount,
+        safeBalance: ((safeBalance / totalBalance) * 100).toFixed(2),
+        disbursementAmount: ((disbursementAmount / totalBalance) * 100).toFixed(
+          2
+        ),
       };
     } catch (err) {
       throw new RpcException(err);
