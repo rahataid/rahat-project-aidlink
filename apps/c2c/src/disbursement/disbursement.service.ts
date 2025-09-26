@@ -234,6 +234,7 @@ export class DisbursementService {
         select: {
           BeneficiaryGroup: {
             select: {
+              name:true,
               _count: {
                 select: {
                   GroupedBeneficiaries: true,
@@ -283,6 +284,7 @@ export class DisbursementService {
         createdAt: disbursement.createdAt,
         updatedAt: disbursement.updatedAt,
         totalBeneficiaries,
+        groupName: disbursement.DisbursementGroup[0]?.BeneficiaryGroup?.name,
         beneficiaryAddresses:
           disbursement.DisbursementBeneficiary?.map(
             (db) => db.Beneficiary?.walletAddress
