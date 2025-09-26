@@ -84,11 +84,17 @@ export class DisbursementMultisigService {
         SAFE_ADDRESS.value['ADDRESS']
       );
 
-      const safeBalance = await this.safeApiKit.getTokenList();
+      const address = SAFE_ADDRESS.value['ADDRESS'];
+
+      const contract = await createContractInstance(
+        'RAHATTOKEN',
+        this.prisma.setting
+      );
+      const safeBalance = await contract.balanceOf.staticCall(address);
       const safeInfo = {
         ...safeDetails,
         nativeBalance: ethers.formatEther(balance),
-        token: safeBalance,
+        tokenBalance: (ethers.formatEther(safeBalance)),
       };
       return safeInfo;
     } catch (err) {

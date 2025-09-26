@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable,Logger } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { ProjectContants } from '@rahataid/sdk';
 import { paginator, PaginatorTypes, PrismaService } from '@rumsan/prisma';
@@ -20,6 +20,7 @@ const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 @Injectable()
 export class BeneficiaryService {
   private rsprisma;
+  private readonly logger= new Logger(BeneficiaryService?.name)
   constructor(
     protected prisma: PrismaService,
     private disbursement: DisbursementMultisigService,
@@ -48,7 +49,7 @@ export class BeneficiaryService {
     const orderBy: Record<string, 'asc' | 'desc'> = {};
     orderBy[sort] = order;
 
-    const projectData = await paginate(
+    const data = await paginate(
       this.prisma.beneficiary,
       {
         where: {
@@ -56,7 +57,45 @@ export class BeneficiaryService {
         },
         orderBy,
         include: {
-          DisbursementBeneficiary: true,
+          DisbursementBeneficiary: {
+            include: {
+              Disbursement: {
+                select: {
+                  amount: true,
+                },
+              },
+            },
+          },
+          GroupedBeneficiaries: {
+            where: {
+              deletedAt: null,
+            },
+            include: {
+              beneficiaryGroup:
+               {
+                include: {
+                  DisbursementGroup: {
+                    include: {
+                      Disbursement: {
+                        select: {
+                          amount: true,
+                        },
+                      },
+                    },
+                  },
+                  _count: {
+                    select: {
+                      GroupedBeneficiaries: {
+                        where: {
+                          deletedAt: null,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       {
@@ -65,6 +104,20 @@ export class BeneficiaryService {
       }
     );
 
+    const benData = data?.data.map((d:any)=>{
+           return {
+            uuid:d?.uuid,
+            walletAddress:d?.walletAddress,
+            createdAt:d?.createdAt,
+            updatedAt: d?.updatedAt,
+            amount: d?.DisbursementBeneficiary[0]?.amount || d?.GroupedBeneficiaries[0]?.beneficiaryGroup?.DisbursementGroup[0]?.Disbursement?.amount/d?.GroupedBeneficiaries[0]?.beneficiaryGroup?._count
+
+           }
+    });
+    const projectData = {
+     data: benData,
+      meta: data?.meta
+    }
     return this.client.send(
       { cmd: 'rahat.jobs.beneficiary.list_by_project' },
       projectData
@@ -181,7 +234,7 @@ export class BeneficiaryService {
         projectBendata
       );
     } catch (error) {
-      console.log(error);
+      this.logger.log(error);
       throw new RpcException('Beneficiary not found.');
     }
     // if (data) return { ...data, ...projectBendata };
@@ -393,42 +446,42 @@ export class BeneficiaryService {
         .map((d) => new Date(d.updatedAt))
         .filter((date) => !isNaN(date.getTime()));
 
-       const latestDisbursementDate =
-         allDates.length > 0
-           ? new Date(Math.max(...allDates.map((date) => date.getTime())))
-           : null;
+      const latestDisbursementDate =
+        allDates.length > 0
+          ? new Date(Math.max(...allDates.map((date) => date.getTime())))
+          : null;
 
-       const latestUpdatedDate =
-         updatedDates.length > 0
-           ? new Date(Math.max(...updatedDates.map((date) => date.getTime())))
-           : null;
+      const latestUpdatedDate =
+        updatedDates.length > 0
+          ? new Date(Math.max(...updatedDates.map((date) => date.getTime())))
+          : null;
 
-       // Find the disbursement with the latest disbursement date and get its transaction hash
-       const latestDisbursement = allDisbursements.find((d) => {
-         const disbursementDate = new Date(d.createdAt);
-         return disbursementDate.getTime() === latestDisbursementDate?.getTime();
-       });
+      // Find the disbursement with the latest disbursement date and get its transaction hash
+      const latestDisbursement = allDisbursements.find((d) => {
+        const disbursementDate = new Date(d.createdAt);
+        return disbursementDate.getTime() === latestDisbursementDate?.getTime();
+      });
 
-       const latestDisbursementTransactionHash = latestDisbursement?.transactionHash || null;
-       const transactiondetails = await this.disbursement.getSafeTransaction(latestDisbursementTransactionHash);
-       console.log(transactiondetails)
+      const latestDisbursementTransactionHash =
+        latestDisbursement?.transactionHash || null;
+      const transactiondetails = await this.disbursement.getSafeTransaction(
+        latestDisbursementTransactionHash
+      );
 
-
-
-       return {
-         beneficiaryId: beneficiary.uuid,
-         walletAddress: beneficiary.walletAddress,
-         allDisbursements: allDisbursements.sort(
-           (a, b) =>
-             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-         ),
-         latestDisbursementDate,
-         latestUpdatedDate,
-         latestDisbursementTransactionHash,
-         disbursementExecution: transactiondetails?.executionDate
-       };
+      return {
+        beneficiaryId: beneficiary.uuid,
+        walletAddress: beneficiary.walletAddress,
+        allDisbursements: allDisbursements.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ),
+        latestDisbursementDate,
+        latestUpdatedDate,
+        latestDisbursementTransactionHash,
+        disbursementExecution: transactiondetails?.executionDate,
+      };
     } catch (error) {
-      console.error('Error in getBenDisbursementDetails:', error);
+      this.logger.error('Error in getBenDisbursementDetails:', error);
       throw new RpcException(
         error.message || 'Failed to fetch disbursement details'
       );
@@ -495,7 +548,7 @@ export class BeneficiaryService {
         const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
 
         if (!beneficiaryDetails) {
-          console.warn(
+          this.logger.warn(
             `Beneficiary with UUID ${benUUID} not found in database`
           );
           return {
@@ -554,9 +607,6 @@ export class BeneficiaryService {
           name: item?.Beneficiary?.pii.name,
           phone_Number: item?.Beneficiary?.pii.phone,
           total_Disbursement: totalDisbursement.toString(),
-          // individualDisbursements: individualDisbursements.toString(),
-          // groupDisbursements: groupDisbursements.toString(),
-          // disbursementCount: beneficiaryDetails.DisbursementBeneficiary.length,
           last_DisbursementDate: lastDisbursementDate?.toISOString() || null,
         };
       });
@@ -565,7 +615,6 @@ export class BeneficiaryService {
       );
       return finalData;
     } catch (error) {
-      // console.error('Error in getBeneficiaryLogs:', error);
       throw error;
     }
   }
