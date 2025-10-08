@@ -478,6 +478,7 @@ export class BeneficiaryService {
         latestDisbursementDate,
         latestUpdatedDate,
         latestDisbursementTransactionHash,
+        latestDisbursementStatus: latestDisbursement?.status,
         disbursementExecution: transactiondetails?.executionDate,
       };
     } catch (error) {

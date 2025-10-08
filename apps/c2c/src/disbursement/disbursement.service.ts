@@ -20,6 +20,7 @@ import { ProjectContants } from '@rahataid/sdk';
 import { PrismaService, paginator } from '@rumsan/prisma';
 import { randomUUID } from 'crypto';
 import { handleMicroserviceCall } from '../utils/handleMicroserviceCall';
+import { DisbursementMultisigService } from './disbursement.multisig.service';
 
 const paginate = paginator({ perPage: 20 });
 
@@ -28,6 +29,7 @@ export class DisbursementService {
   private rsprisma;
   constructor(
     protected prisma: PrismaService,
+    private multisigDisbursement: DisbursementMultisigService,
     @Inject(ProjectContants.ELClient) private readonly client: ClientProxy,
     private eventEmitter: EventEmitter2
   ) {
@@ -326,6 +328,7 @@ export class DisbursementService {
           },
         },
       });
+      const safeTx = await this.multisigDisbursement.getSafeTransaction(disbursement?.transactionHash);
       const result = {
         id: disbursement.id,
         uuid: disbursement.uuid,
@@ -358,6 +361,7 @@ export class DisbursementService {
                   updatedAt: ben.updatedAt,
                 })
               ) || [],
+              disbursementExecution: safeTx?.executionDate
       };
 
       return result;
