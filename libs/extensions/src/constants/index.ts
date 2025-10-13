@@ -109,4 +109,5 @@ export const EVENTS = {
   VOUCHER_ASSIGNED: 'voucher_assigned',
   BENEFICIARY_CREATE: 'beneficiary.created',
   DISBURSEMENT_CREATE: 'disbursement.created',
+  DISBURSEMENT_EMAIL_NOTIFICATION: 'disbursement.email.notification',
 };
