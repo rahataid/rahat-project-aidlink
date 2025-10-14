@@ -22,7 +22,8 @@ export class DisbursementController {
     uuid: process.env.PROJECT_ID,
   })
   create(@Payload() createDisbursementDto: any) {
-    return this.disbursementService.create(createDisbursementDto);
+    const projectId = process.env.PROJECT_ID;
+    return this.disbursementService.create(createDisbursementDto, projectId);
   }
 
   @MessagePattern({
@@ -46,9 +47,11 @@ export class DisbursementController {
     uuid: process.env.PROJECT_ID,
   })
   update(@Payload() updateDisbursementDto: any) {
+    const projectId = process.env.PROJECT_ID;
     return this.disbursementService.update(
       updateDisbursementDto.id,
-      updateDisbursementDto
+      updateDisbursementDto,
+      projectId
     );
   }
 
