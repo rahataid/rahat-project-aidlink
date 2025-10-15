@@ -8,9 +8,9 @@ import {
 import { PrismaService } from '@rumsan/prisma';
 import { ethers, JsonRpcApiProvider, JsonRpcProvider } from 'ethers';
 import { erc20Abi } from '../utils/constant';
-import { getWalletFromPrivateKey } from '../utils/web3';
-import { get } from 'http';
+import { createContractInstance, getWalletFromPrivateKey } from '../utils/web3';
 import { CreateSafeTransactionDto } from '@rahataid/c2c-extensions/dtos';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DisbursementMultisigService {
@@ -35,7 +35,7 @@ export class DisbursementMultisigService {
       erc20Abi,
       new JsonRpcProvider(process.env.NETWORK_PROVIDER)
     );
-    // getWalletFromPrivateKey(process.env.DEPLOYER_PRIVATE_KEY));
+    // getWalletFromPrivateKey(process.env.SAFE_PROPOSER_PRIVATE_ADDRESS));
     const decimals = await tokenContract.decimals();
     const tokenApprovalEncodedData = tokenContract.interface.encodeFunctionData(
       'approve',
@@ -62,7 +62,7 @@ export class DisbursementMultisigService {
     });
     const safeKit = await Safe.init({
       provider: process.env.NETWORK_PROVIDER,
-      signer: process.env.DEPLOYER_PRIVATE_KEY,
+      signer: process.env.SAFE_PROPOSER_PRIVATE_ADDRESS,
       safeAddress: SAFE_ADDRESS.value['ADDRESS'],
     });
     return safeKit;
@@ -84,11 +84,17 @@ export class DisbursementMultisigService {
         SAFE_ADDRESS.value['ADDRESS']
       );
 
-      const safeBalance = await this.safeApiKit.getTokenList();
+      const address = SAFE_ADDRESS.value['ADDRESS'];
+
+      const contract = await createContractInstance(
+        'RAHATTOKEN',
+        this.prisma.setting
+      );
+      const safeBalance = await contract.balanceOf.staticCall(address);
       const safeInfo = {
         ...safeDetails,
         nativeBalance: ethers.formatEther(balance),
-        token: safeBalance,
+        tokenBalance: (ethers.formatEther(safeBalance)),
       };
       return safeInfo;
     } catch (err) {
@@ -103,7 +109,6 @@ export class DisbursementMultisigService {
 
   async createSafeTransaction(payload: CreateSafeTransactionDto) {
     try {
-      console.log('creatin tx');
       const transactionData = await this.generateTransactionData(
         payload.amount
       );
@@ -115,7 +120,7 @@ export class DisbursementMultisigService {
       const safeTxHash = await safeWallet.getTransactionHash(safeTransaction);
       const signature = await safeWallet.signHash(safeTxHash);
       const deployerWallet = getWalletFromPrivateKey(
-        process.env.DEPLOYER_PRIVATE_KEY
+        process.env.SAFE_PROPOSER_PRIVATE_ADDRESS
       );
       const safeAddress = await safeWallet.getAddress();
 
@@ -152,7 +157,6 @@ export class DisbursementMultisigService {
 
   async getTransactionApprovals(safeTxHash: string) {
     try {
-
       const { owners } = await this.getOwnersList();
       const { confirmations, confirmationsRequired, isExecuted, proposer } =
         await this.getSafeTransaction(safeTxHash);
@@ -167,7 +171,13 @@ export class DisbursementMultisigService {
           ...confirmation,
         };
       });
-      return { approvals, confirmationsRequired, isExecuted, proposer, approvalsCount: confirmations.length };
+      return {
+        approvals,
+        confirmationsRequired,
+        isExecuted,
+        proposer,
+        approvalsCount: confirmations.length,
+      };
     } catch (error) {
       console.log(error);
       throw error;
@@ -185,5 +195,42 @@ export class DisbursementMultisigService {
     );
 
     return pendingTransaction;
+  }
+
+  async getDisbursementSafeBalanceChart() {
+    try {
+      const SAFE_ADDRESS = await this.prisma.setting.findFirst({
+        where: {
+          name: 'SAFE_WALLET',
+        },
+      });
+
+      const address = SAFE_ADDRESS.value['ADDRESS'];
+
+      const contract = await createContractInstance(
+        'RAHATTOKEN',
+        this.prisma.setting
+      );
+      const balance = await contract.balanceOf.staticCall(address);
+
+      const disbursements = await this.prisma.disbursement.findMany({
+        select: {
+          amount: true,
+        },
+      });
+      const disbursementAmount = disbursements.reduce((sum, d) => {
+        return sum + (parseFloat(d.amount) || 0);
+      }, 0);
+      const safeBalance = Number(ethers.formatEther(balance));
+      const totalBalance = Number(safeBalance + disbursementAmount);
+      return {
+        safeBalance: ((safeBalance / totalBalance) * 100).toFixed(2),
+        disbursementAmount: ((disbursementAmount / totalBalance) * 100).toFixed(
+          2
+        ),
+      };
+    } catch (err) {
+      throw new RpcException(err);
+    }
   }
 }
