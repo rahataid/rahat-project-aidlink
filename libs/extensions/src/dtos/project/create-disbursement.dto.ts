@@ -145,3 +145,49 @@ export class CreateSafeTransactionDto {
   @IsString()
   amount!: string;
 }
+
+
+export class ListDisbursementDto{
+  @ApiProperty({
+    example:'1'
+  })
+  @IsOptional()
+  projectId?:string;
+
+  @ApiProperty({
+    example:1
+  })
+  @IsOptional()
+  page?:number;
+
+  @ApiProperty({
+    example:10
+  })
+  @IsOptional()
+  perPage?:number;
+
+  @ApiProperty({
+    example:DisbursementStatus.DRAFT
+  })
+  @IsOptional()
+  status?:DisbursementStatus;
+
+  @ApiProperty({
+    example:DisbursementTargetType.GROUP
+  })
+  @IsOptional()
+  disbursementType?: DisbursementTargetType
+
+  @ApiProperty({
+    example:'2025-01-01'
+  })
+  @IsOptional()
+  fromDate?: Date
+
+    @ApiProperty({
+    example:'2025-01-30'
+  })
+  @IsOptional()
+  toDate?: Date
+
+}

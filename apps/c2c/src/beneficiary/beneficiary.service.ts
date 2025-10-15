@@ -13,6 +13,7 @@ import { lastValueFrom } from 'rxjs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
 import { getOffRampDetails } from '../utils/Xcapit';
+import { DisbursementMultisigService } from '../disbursement/disbursement.multisig.service';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -21,6 +22,7 @@ export class BeneficiaryService {
   private rsprisma;
   constructor(
     protected prisma: PrismaService,
+    private disbursement: DisbursementMultisigService,
     @Inject(ProjectContants.ELClient) private readonly client: ClientProxy,
     private eventEmitter: EventEmitter2
   ) {
@@ -291,9 +293,145 @@ export class BeneficiaryService {
     try {
       const data = await getOffRampDetails(beneficiaryPhone, limit);
       return data;
+    } catch (error) {
+      throw new RpcException(
+        error?.response?.data?.error || error?.response?.data
+      );
     }
-    catch(error){
-     throw  new RpcException(error?.response?.data?.error || error?.response?.data);
+  }
+
+  async getBenDisbursementDetails(payload) {
+    try {
+      const { beneficiaryId } = payload;
+      const beneficiary = await this.prisma.beneficiary.findUnique({
+        where: { uuid: beneficiaryId },
+        include: {
+          DisbursementBeneficiary: {
+            include: {
+              Disbursement: {
+                select: {
+                  amount: true,
+                  status: true,
+                  disbursementType: true,
+                  transactionHash: true,
+                  createdAt: true,
+                  updatedAt: true,
+                },
+              },
+            },
+          },
+          GroupedBeneficiaries: {
+            include: {
+              beneficiaryGroup: {
+                include: {
+                  DisbursementGroup: {
+                    include: {
+                      Disbursement: {
+                        select: {
+                          amount: true,
+                          status: true,
+                          disbursementType: true,
+                          transactionHash: true,
+                          createdAt: true,
+                          updatedAt: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!beneficiary) {
+        throw new RpcException('Beneficiary not found');
+      }
+
+      const individualDisbursements = beneficiary.DisbursementBeneficiary.map(
+        (db) => ({
+          amount: db.amount,
+          disbursementAmount: db.Disbursement.amount,
+          status: db.Disbursement.status,
+          disbursementType: db.Disbursement.disbursementType,
+          transactionHash:
+            db.transactionHash || db.Disbursement.transactionHash,
+          from: db.from,
+          createdAt: db.createdAt,
+          updatedAt: db.updatedAt,
+          disbursementCategory: 'individual',
+        })
+      );
+
+      const groupDisbursements = beneficiary.GroupedBeneficiaries.flatMap(
+        (gb) => {
+          return gb.beneficiaryGroup.DisbursementGroup.map((dg) => ({
+            disbursementAmount: dg.amount,
+            status: dg.Disbursement.status,
+            disbursementType: dg.Disbursement.disbursementType,
+            transactionHash:
+              dg.transactionHash || dg.Disbursement.transactionHash,
+            from: dg.from,
+            createdAt: dg.createdAt,
+            updatedAt: dg.updatedAt,
+            disbursementCategory: 'group',
+          }));
+        }
+      );
+
+      const allDisbursements = [
+        ...individualDisbursements,
+        ...groupDisbursements,
+      ];
+
+      const allDates = allDisbursements
+        .map((d) => new Date(d.createdAt))
+        .filter((date) => !isNaN(date.getTime()));
+
+      const updatedDates = allDisbursements
+        .map((d) => new Date(d.updatedAt))
+        .filter((date) => !isNaN(date.getTime()));
+
+       const latestDisbursementDate =
+         allDates.length > 0
+           ? new Date(Math.max(...allDates.map((date) => date.getTime())))
+           : null;
+
+       const latestUpdatedDate =
+         updatedDates.length > 0
+           ? new Date(Math.max(...updatedDates.map((date) => date.getTime())))
+           : null;
+
+       // Find the disbursement with the latest disbursement date and get its transaction hash
+       const latestDisbursement = allDisbursements.find((d) => {
+         const disbursementDate = new Date(d.createdAt);
+         return disbursementDate.getTime() === latestDisbursementDate?.getTime();
+       });
+
+       const latestDisbursementTransactionHash = latestDisbursement?.transactionHash || null;
+       const transactiondetails = await this.disbursement.getSafeTransaction(latestDisbursementTransactionHash);
+       console.log(transactiondetails)
+
+
+
+       return {
+         beneficiaryId: beneficiary.uuid,
+         walletAddress: beneficiary.walletAddress,
+         allDisbursements: allDisbursements.sort(
+           (a, b) =>
+             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+         ),
+         latestDisbursementDate,
+         latestUpdatedDate,
+         latestDisbursementTransactionHash,
+         disbursementExecution: transactiondetails?.executionDate
+       };
+    } catch (error) {
+      console.error('Error in getBenDisbursementDetails:', error);
+      throw new RpcException(
+        error.message || 'Failed to fetch disbursement details'
+      );
     }
   }
 

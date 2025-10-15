@@ -14,6 +14,7 @@ import {
   UpdateDisbursementDto,
   DisbursementTransactionDto,
   DisbursementBenefeciaryCreate,
+  ListDisbursementDto,
 } from '@rahataid/c2c-extensions/dtos';
 import { ProjectContants } from '@rahataid/sdk';
 import { PrismaService, paginator } from '@rumsan/prisma';
@@ -104,11 +105,12 @@ export class DisbursementService {
             },
           },
           update: {
-            amount: beneficiarydata.length > 0
-              ? beneficiarydata
-                  .reduce((acc, curr) => acc + parseFloat(curr.amount), 0)
-                  .toString()
-              : amount,
+            amount:
+              beneficiarydata.length > 0
+                ? beneficiarydata
+                    .reduce((acc, curr) => acc + parseFloat(curr.amount), 0)
+                    .toString()
+                : amount,
             from,
             transactionHash,
           },
@@ -205,8 +207,19 @@ export class DisbursementService {
     }
   }
 
-  async findAll() {
+  async findAll(query: ListDisbursementDto) {
     const where: Prisma.DisbursementWhereInput = {};
+    if (query?.status) where.status = query?.status;
+    if (query?.disbursementType)
+      where.disbursementType = query?.disbursementType;
+    if (query?.fromDate || query?.toDate) {
+      where.createdAt = {};
+      if (query?.fromDate) where.createdAt.gte = new Date(query?.fromDate);
+      if (query?.toDate) {
+        where.createdAt.lte = new Date(query?.toDate);
+      }
+    }
+
     const include: Prisma.DisbursementInclude = {
       DisbursementBeneficiary: {
         include: {
@@ -244,8 +257,8 @@ export class DisbursementService {
       this.rsprisma.disbursement,
       { where, include, orderBy },
       {
-        page: 1,
-        perPage: 20,
+        page: query.page || 1,
+        perPage: query?.perPage || 20,
       }
     );
 
@@ -253,7 +266,8 @@ export class DisbursementService {
       let totalBeneficiaries = disbursement._count.DisbursementBeneficiary;
 
       disbursement.DisbursementGroup.forEach((group: any) => {
-        totalBeneficiaries += group.BeneficiaryGroup._count.GroupedBeneficiaries;
+        totalBeneficiaries +=
+          group.BeneficiaryGroup._count.GroupedBeneficiaries;
       });
 
       return {
@@ -269,7 +283,10 @@ export class DisbursementService {
         createdAt: disbursement.createdAt,
         updatedAt: disbursement.updatedAt,
         totalBeneficiaries,
-        beneficiaryAddresses: disbursement.DisbursementBeneficiary?.map(db => db.Beneficiary?.walletAddress).filter(Boolean) || [],
+        beneficiaryAddresses:
+          disbursement.DisbursementBeneficiary?.map(
+            (db) => db.Beneficiary?.walletAddress
+          ).filter(Boolean) || [],
       };
     });
 
@@ -287,18 +304,18 @@ export class DisbursementService {
         },
         include: {
           DisbursementBeneficiary: true,
-          DisbursementGroup:{
-            include:{
-              BeneficiaryGroup:{
-                include:{
-                  GroupedBeneficiaries:{
-                    include:{
-                      beneficiary: true
-                    }
-                  }
-                }
-              }
-            }
+          DisbursementGroup: {
+            include: {
+              BeneficiaryGroup: {
+                include: {
+                  GroupedBeneficiaries: {
+                    include: {
+                      beneficiary: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           _count: {
             select: {
@@ -307,36 +324,39 @@ export class DisbursementService {
           },
         },
       });
-     const result = {
-      id:disbursement.id,
-      uuid:disbursement.uuid,
-      disbursementType:disbursement.disbursementType,
-      status:disbursement.status,
-      type:disbursement.type,
-      amount:disbursement.amount,
-      transactionHash:disbursement.transactionHash,
-      details:disbursement.details,
-      timestamp:disbursement.timestamp,
-      createdAt:disbursement.createdAt,
-      updatedAt:disbursement.updatedAt,
-      beneficiaries: disbursement.DisbursementBeneficiary?.length > 0 
-        ? disbursement.DisbursementBeneficiary.map(beneficiary => ({
-            id: beneficiary.id,
-            walletAddress: beneficiary.beneficiaryWalletAddress,
-            amount: beneficiary.amount,
-            from: beneficiary.from,
-            transactionHash: beneficiary.transactionHash,
-            createdAt: beneficiary.createdAt,
-            updatedAt: beneficiary.updatedAt,
-          }))
-        : disbursement?.DisbursementGroup?.[0]?.BeneficiaryGroup?.GroupedBeneficiaries?.map(ben => ({
-            id: ben.beneficiary.id,
-            uuid: ben.beneficiary.uuid,
-            walletAddress: ben.beneficiary.walletAddress,
-            createdAt: ben.createdAt,
-            updatedAt: ben.updatedAt,
-          })) || [],
-     }
+      const result = {
+        id: disbursement.id,
+        uuid: disbursement.uuid,
+        disbursementType: disbursement.disbursementType,
+        status: disbursement.status,
+        type: disbursement.type,
+        amount: disbursement.amount,
+        transactionHash: disbursement.transactionHash,
+        details: disbursement.details,
+        timestamp: disbursement.timestamp,
+        createdAt: disbursement.createdAt,
+        updatedAt: disbursement.updatedAt,
+        beneficiaries:
+          disbursement.DisbursementBeneficiary?.length > 0
+            ? disbursement.DisbursementBeneficiary.map((beneficiary) => ({
+                id: beneficiary.id,
+                walletAddress: beneficiary.beneficiaryWalletAddress,
+                amount: beneficiary.amount,
+                from: beneficiary.from,
+                transactionHash: beneficiary.transactionHash,
+                createdAt: beneficiary.createdAt,
+                updatedAt: beneficiary.updatedAt,
+              }))
+            : disbursement?.DisbursementGroup?.[0]?.BeneficiaryGroup?.GroupedBeneficiaries?.map(
+                (ben) => ({
+                  id: ben.beneficiary.id,
+                  uuid: ben.beneficiary.uuid,
+                  walletAddress: ben.beneficiary.walletAddress,
+                  createdAt: ben.createdAt,
+                  updatedAt: ben.updatedAt,
+                })
+              ) || [],
+      };
 
       return result;
     } catch (error) {

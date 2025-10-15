@@ -5,6 +5,7 @@ import { DisbursementService } from './disbursement.service';
 import {
   CreateDisbursementDto,
   DisbursementTransactionDto,
+  ListDisbursementDto,
   UpdateDisbursementDto,
 } from '@rahataid/c2c-extensions/dtos';
 import { DisbursementMultisigService } from './disbursement.multisig.service';
@@ -28,8 +29,8 @@ export class DisbursementController {
     cmd: JOBS.DISBURSEMENT.LIST,
     uuid: process.env.PROJECT_ID,
   })
-  findAll() {
-    return this.disbursementService.findAll();
+  findAll(query:ListDisbursementDto) {
+    return this.disbursementService.findAll(query);
   }
 
   @MessagePattern({
@@ -104,6 +105,15 @@ export class DisbursementController {
   })
   getOwnersList() {
     return this.disbursementMultisigService.getOwnersList();
+  }
+
+  @MessagePattern({
+    cmd:JOBS.DISBURSEMENT.DISBURSEMENT_BALANCE_CHART,
+    uuid: process.env.PROJECT_ID,
+    
+  })
+  getDisbursementSafeBalanceChart(){
+    return this.disbursementMultisigService.getDisbursementSafeBalanceChart();
   }
 }
 
