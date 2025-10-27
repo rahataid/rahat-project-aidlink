@@ -45,7 +45,7 @@ export const JOBS = {
     ADD_GROUP_TO_PROJECT: 'rahat.jobs.beneficiary.add_group_to_project',
     GET_BEN_REPORTING_LOGS: 'rahat.jobs.beneficiary.get_ben_reporting_logs',
     GET_OFFRAMP_DETAILS: 'rahat.jobs.beneficiary.get_offramp_details',
-    GET_BEN_DISBURSEMENT:'rahat.jobs.beneficiary.get_ben_disbursement_details'
+    GET_BEN_DISBURSEMENT: 'rahat.jobs.beneficiary.get_ben_disbursement_details',
   },
 
   PROJECT: {
@@ -87,13 +87,14 @@ export const JOBS = {
     UPDATE: 'rahat.jobs.disbursement.update',
     DISBURSEMENT_TRANSACTION: 'rahat.jobs.disbursement.transactions.get',
     DISBURSEMENT_APPROVAL: 'rahat.jobs.disbursement.approvals.get',
-    DISBURSEMENT_BALANCE_CHART:'rahat.jobs.disbursement.balance.get'
+    GET_PENDING_DISBURSEMENT: 'rahat.jobs.disbursements.pending.get',
+    DISBURSEMENT_BALANCE_CHART: 'rahat.jobs.disbursement.balance.get',
   },
   SAFE_TRANSACTION: {
     CREATE: 'rahat.jobs.safe_transaction.create',
     GET: 'rahat.jobs.safe_transaction.get',
     GET_PENDING: 'rahat.jobs.safe_transaction.get_pending',
-    GET_OWNERS:'rahat.jobs.safe_wallet.get_owner'
+    GET_OWNERS: 'rahat.jobs.safe_wallet.get_owner',
   },
 };
 
@@ -108,4 +109,5 @@ export const EVENTS = {
   VOUCHER_ASSIGNED: 'voucher_assigned',
   BENEFICIARY_CREATE: 'beneficiary.created',
   DISBURSEMENT_CREATE: 'disbursement.created',
+  DISBURSEMENT_EMAIL_NOTIFICATION: 'disbursement.email.notification',
 };

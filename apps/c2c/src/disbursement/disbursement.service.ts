@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import {
@@ -20,21 +20,27 @@ import { ProjectContants } from '@rahataid/sdk';
 import { PrismaService, paginator } from '@rumsan/prisma';
 import { randomUUID } from 'crypto';
 import { handleMicroserviceCall } from '../utils/handleMicroserviceCall';
+import { DisbursementMultisigService } from './disbursement.multisig.service';
 
 const paginate = paginator({ perPage: 20 });
 
 @Injectable()
 export class DisbursementService {
   private rsprisma;
+  private readonly logger = new Logger(DisbursementService?.name);
   constructor(
     protected prisma: PrismaService,
+    private multisigDisbursement: DisbursementMultisigService,
     @Inject(ProjectContants.ELClient) private readonly client: ClientProxy,
     private eventEmitter: EventEmitter2
   ) {
     this.rsprisma = this.prisma.rsclient;
   }
 
-  async create(createDisbursementDto: CreateDisbursementDto) {
+  async create(
+    createDisbursementDto: CreateDisbursementDto,
+    projectId?: string
+  ) {
     try {
       const {
         amount,
@@ -45,6 +51,7 @@ export class DisbursementService {
         timestamp,
         type,
         details,
+        disbursementType,
       } = createDisbursementDto;
       let beneficiarydata = beneficiaries || [];
       let result;
@@ -200,6 +207,20 @@ export class DisbursementService {
         );
       }
       this.eventEmitter.emit(EVENTS.DISBURSEMENT_CREATE, {});
+      this.eventEmitter.emit(EVENTS.DISBURSEMENT_EMAIL_NOTIFICATION, {
+        actionType: 'INITIATED',
+        projectId,
+        disbursementId: disbursement.uuid,
+        disbursementType: disbursement.disbursementType,
+        amount: disbursement.amount,
+        beneficiariesCount:
+          disbursementType === DisbursementTargetType.INDIVIDUAL
+            ? beneficiaries?.length
+            : disbursementType === DisbursementTargetType.GROUP
+            ? beneficiarydata?.length
+            : 0,
+      });
+
       return disbursement;
     } catch (error) {
       console.log(error);
@@ -234,6 +255,7 @@ export class DisbursementService {
         select: {
           BeneficiaryGroup: {
             select: {
+              name: true,
               _count: {
                 select: {
                   GroupedBeneficiaries: true,
@@ -283,6 +305,7 @@ export class DisbursementService {
         createdAt: disbursement.createdAt,
         updatedAt: disbursement.updatedAt,
         totalBeneficiaries,
+        groupName: disbursement.DisbursementGroup[0]?.BeneficiaryGroup?.name,
         beneficiaryAddresses:
           disbursement.DisbursementBeneficiary?.map(
             (db) => db.Beneficiary?.walletAddress
@@ -324,6 +347,9 @@ export class DisbursementService {
           },
         },
       });
+      const safeTx = await this.multisigDisbursement.getSafeTransaction(
+        disbursement?.transactionHash
+      );
       const result = {
         id: disbursement.id,
         uuid: disbursement.uuid,
@@ -356,6 +382,7 @@ export class DisbursementService {
                   updatedAt: ben.updatedAt,
                 })
               ) || [],
+        disbursementExecution: safeTx?.executionDate,
       };
 
       return result;
@@ -365,7 +392,11 @@ export class DisbursementService {
     }
   }
 
-  async update(id: number, updateDisbursementDto: UpdateDisbursementDto) {
+  async update(
+    id: number,
+    updateDisbursementDto: UpdateDisbursementDto,
+    projectId?: string
+  ) {
     try {
       const disbursement = await this.rsprisma.disbursement.update({
         where: { id },
@@ -399,6 +430,23 @@ export class DisbursementService {
       //     },
       //   });
       // }
+
+      if (disbursement.status === DisbursementStatus.COMPLETED) {
+        this.eventEmitter.emit(EVENTS.DISBURSEMENT_EMAIL_NOTIFICATION, {
+          actionType: 'EXECUTED',
+          projectId,
+          disbursementId: disbursement.uuid,
+          disbursementType: disbursement.disbursementType,
+          amount: disbursement.amount,
+          beneficiariesCount:
+            disbursement.disbursementType === DisbursementTargetType.INDIVIDUAL
+              ? disbursement.DisbursementBeneficiary?.length
+              : disbursement.disbursementType === DisbursementTargetType.GROUP
+              ? disbursement?.DisbursementGroup?.[0]?.BeneficiaryGroup
+                  ?.GroupedBeneficiaries?.length
+              : 0,
+        });
+      }
 
       return disbursement;
     } catch (error) {
@@ -460,5 +508,14 @@ export class DisbursementService {
         perPage: 20,
       }
     );
+  }
+
+  async disbursementPending() {
+    this.logger.log('calculating total draft disbursement');
+    return await this.prisma.disbursement.count({
+      where: {
+        status: 'DRAFT',
+      },
+    });
   }
 }
