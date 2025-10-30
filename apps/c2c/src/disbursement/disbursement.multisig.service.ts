@@ -91,10 +91,11 @@ export class DisbursementMultisigService {
         this.prisma.setting
       );
       const safeBalance = await contract.balanceOf.staticCall(address);
+      const decimals = await contract.decimals.staticCall();
       const safeInfo = {
         ...safeDetails,
-        nativeBalance: ethers.formatEther(balance),
-        tokenBalance: (ethers.formatEther(safeBalance)),
+        nativeBalance: ethers.formatUnits(balance,decimals),
+        tokenBalance: (ethers.formatUnits(safeBalance,decimals)),
       };
       return safeInfo;
     } catch (err) {
@@ -213,6 +214,8 @@ export class DisbursementMultisigService {
       );
       const balance = await contract.balanceOf.staticCall(address);
 
+      const decimals = await contract.decimals.staticCall();
+
       const disbursements = await this.prisma.disbursement.findMany({
         select: {
           amount: true,
@@ -221,7 +224,7 @@ export class DisbursementMultisigService {
       const disbursementAmount = disbursements.reduce((sum, d) => {
         return sum + (parseFloat(d.amount) || 0);
       }, 0);
-      const safeBalance = Number(ethers.formatEther(balance));
+      const safeBalance = Number(ethers.formatUnits(balance,decimals));
       const totalBalance = Number(safeBalance + disbursementAmount);
       return {
         safeBalance: ((safeBalance / totalBalance) * 100).toFixed(2),
