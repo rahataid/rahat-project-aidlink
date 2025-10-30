@@ -237,7 +237,9 @@ export class DisbursementService {
       where.createdAt = {};
       if (query?.fromDate) where.createdAt.gte = new Date(query?.fromDate);
       if (query?.toDate) {
-        where.createdAt.lte = new Date(query?.toDate);
+        const toDate = new Date(query?.toDate);
+        toDate.setUTCHours(23, 59, 59, 999);
+        where.createdAt.lte = toDate;
       }
     }
 
