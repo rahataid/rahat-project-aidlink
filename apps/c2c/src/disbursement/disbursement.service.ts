@@ -456,34 +456,124 @@ export class DisbursementService {
   }
 
   async disbursementTransaction(disbursementDto: DisbursementTransactionDto) {
-    const where: Prisma.DisbursementBeneficiaryWhereInput = {
-      Disbursement: {
-        uuid: disbursementDto.disbursementUUID,
-      },
-    };
-    const include: Prisma.DisbursementBeneficiaryInclude = {
-      Beneficiary: true,
-      Disbursement: {
-        select: {
-          status: true,
-          createdAt: true,
-          amount: true,
-          type: true,
+    try {
+      const disbursement = await this.rsprisma.disbursement.findUnique({
+        where: {
+          uuid: disbursementDto.disbursementUUID,
         },
-      },
-    };
-    const orderBy: Prisma.DisbursementBeneficiaryOrderByWithAggregationInput = {
-      createdAt: 'desc',
-    };
+        select: {
+          disbursementType: true,
+          status: true,
+        },
+      });
 
-    return paginate(
-      this.rsprisma.disbursementBeneficiary,
-      { where, include, orderBy },
-      {
-        page: 1,
-        perPage: 20,
+      if (!disbursement) {
+        throw new RpcException({
+          status: 404,
+          message: 'Disbursement not found',
+        });
       }
-    );
+
+      let result;
+
+      if (disbursement.disbursementType === DisbursementTargetType.INDIVIDUAL) {
+        const where: Prisma.DisbursementBeneficiaryWhereInput = {
+          Disbursement: {
+            uuid: disbursementDto.disbursementUUID,
+          },
+        };
+        const include: Prisma.DisbursementBeneficiaryInclude = {
+          Beneficiary: true,
+          Disbursement: {
+            select: {
+              status: true,
+            },
+          },
+        };
+        const orderBy: Prisma.DisbursementBeneficiaryOrderByWithAggregationInput =
+          {
+            createdAt: 'desc',
+          };
+
+        const paginatedResult = await paginate(
+          this.rsprisma.disbursementBeneficiary,
+          { where, include, orderBy },
+          {
+            page: 1,
+            perPage: 20,
+          }
+        );
+
+        result = {
+          data: paginatedResult.data.map((db: any) => ({
+            amount: db.amount,
+            from: db.from,
+            updatedAt: db.updatedAt,
+            status: db.Disbursement.status,
+            beneficiaryWalletAddress: db.beneficiaryWalletAddress,
+          })),
+          meta: paginatedResult.meta,
+        };
+      } 
+      else if (
+        disbursement.disbursementType === DisbursementTargetType.GROUP
+      ) {
+        const where: Prisma.DisbursementGroupWhereInput = {
+          Disbursement: {
+            uuid: disbursementDto.disbursementUUID,
+          },
+        };
+        const include: Prisma.DisbursementGroupInclude = {
+          BeneficiaryGroup: {
+            include: {
+              GroupedBeneficiaries: {
+                include: {
+                  beneficiary: true,
+                },
+              },
+            },
+          },
+          Disbursement: {
+            select: {
+              status: true,
+            },
+          },
+        };
+        const orderBy: Prisma.DisbursementGroupOrderByWithAggregationInput = {
+          createdAt: 'desc',
+        };
+
+        const paginatedResult = await paginate(
+          this.rsprisma.disbursementGroup,
+          { where, include, orderBy },
+          {
+            page: 1,
+            perPage: 20,
+          }
+        );
+        const transactionDetails: any[] = [];
+        paginatedResult.data.forEach((dg: any) => {
+          dg.BeneficiaryGroup?.GroupedBeneficiaries?.forEach((gb: any) => {
+            transactionDetails.push({
+              amount: dg.amount,
+              from: dg.from,
+              updatedAt: dg.updatedAt,
+              status: dg.Disbursement.status,
+              beneficiaryWalletAddress: gb.beneficiary?.walletAddress,
+            });
+          });
+        });
+
+        result = {
+          data: transactionDetails,
+          meta: paginatedResult.meta,
+        };
+      }
+      return result;
+    } catch (err) {
+      this.logger.error('Error in disbursementTransaction', err);
+      throw err;
+    }
   }
 
   async disbursementApprovals(disbursementDto: DisbursementApprovalsDTO) {
