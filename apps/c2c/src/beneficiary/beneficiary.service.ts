@@ -1,4 +1,4 @@
-import { Inject, Injectable,Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { ProjectContants } from '@rahataid/sdk';
 import { paginator, PaginatorTypes, PrismaService } from '@rumsan/prisma';
@@ -20,7 +20,7 @@ const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 @Injectable()
 export class BeneficiaryService {
   private rsprisma;
-  private readonly logger= new Logger(BeneficiaryService?.name)
+  private readonly logger = new Logger(BeneficiaryService?.name);
   constructor(
     protected prisma: PrismaService,
     private disbursement: DisbursementMultisigService,
@@ -71,8 +71,7 @@ export class BeneficiaryService {
               deletedAt: null,
             },
             include: {
-              beneficiaryGroup:
-               {
+              beneficiaryGroup: {
                 include: {
                   DisbursementGroup: {
                     include: {
@@ -104,20 +103,23 @@ export class BeneficiaryService {
       }
     );
 
-    const benData = data?.data.map((d:any)=>{
-           return {
-            uuid:d?.uuid,
-            walletAddress:d?.walletAddress,
-            createdAt:d?.createdAt,
-            updatedAt: d?.updatedAt,
-            amount: d?.DisbursementBeneficiary[0]?.amount || d?.GroupedBeneficiaries[0]?.beneficiaryGroup?.DisbursementGroup[0]?.Disbursement?.amount/d?.GroupedBeneficiaries[0]?.beneficiaryGroup?._count
-
-           }
+    const benData = data?.data.map((d: any) => {
+      return {
+        uuid: d?.uuid,
+        walletAddress: d?.walletAddress,
+        createdAt: d?.createdAt,
+        updatedAt: d?.updatedAt,
+        amount:
+          d?.DisbursementBeneficiary[0]?.amount ||
+          d?.GroupedBeneficiaries[0]?.beneficiaryGroup?.DisbursementGroup[0]
+            ?.Disbursement?.amount /
+            d?.GroupedBeneficiaries[0]?.beneficiaryGroup?._count,
+      };
     });
     const projectData = {
-     data: benData,
-      meta: data?.meta
-    }
+      data: benData,
+      meta: data?.meta,
+    };
     return this.client.send(
       { cmd: 'rahat.jobs.beneficiary.list_by_project' },
       projectData
@@ -276,7 +278,7 @@ export class BeneficiaryService {
     const disbursementAmount = benfGroup?.DisbursementGroup?.reduce(
       (sum, dg) => {
         if (dg.Disbursement?.status === 'COMPLETED') {
-          return sum + Number(dg.amount);
+          return sum + Number(dg.Disbursement.amount);
         }
         return sum;
       },
@@ -362,7 +364,7 @@ export class BeneficiaryService {
         const totalCompletedAmount = group.DisbursementGroup.reduce(
           (sum, item) => {
             if (item.Disbursement?.status === 'COMPLETED') {
-              return sum + Number(item.amount);
+              return sum + Number(item.Disbursement.amount);
             }
             return sum;
           },
