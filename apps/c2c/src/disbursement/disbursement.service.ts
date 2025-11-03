@@ -235,7 +235,11 @@ export class DisbursementService {
       where.disbursementType = query?.disbursementType;
     if (query?.fromDate || query?.toDate) {
       where.createdAt = {};
-      if (query?.fromDate) where.createdAt.gte = new Date(query?.fromDate);
+      if (query?.fromDate) {
+        const fromDate = new Date(query?.fromDate);
+        fromDate.setUTCHours(0, 0, 0, 0);
+        where.createdAt.gte = fromDate;
+      }
       if (query?.toDate) {
         const toDate = new Date(query?.toDate);
         toDate.setUTCHours(23, 59, 59, 999);
