@@ -452,6 +452,7 @@ export class DisbursementService {
                   ?.GroupedBeneficiaries?.length
               : 0,
         });
+        this.eventEmitter.emit(EVENTS.DISBURSEMENT_CREATE, {});
       }
 
       return disbursement;
