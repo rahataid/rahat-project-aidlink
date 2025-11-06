@@ -387,6 +387,7 @@ export class BeneficiaryService {
         return {
           uuid: group?.uuid,
           updatedAt: group?.updatedAt,
+          name: group?.name,
           totalBeneficiaries: group?._count?.GroupedBeneficiaries,
           totalCompletedAmount,
         };
