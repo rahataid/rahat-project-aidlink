@@ -37,41 +37,40 @@ export class StatsService {
 
   async calculateBeneficiaryTotal() {
     const beneficiary = await this.prismaService.beneficiary.count({});
-    return{
+    return {
       count: beneficiary,
-      id: 'ALL'
-    }
+      id: 'ALL',
+    };
   }
 
   async calculateDisbursementTotal() {
     const disbursements = await this.prismaService.disbursement.findMany({
       select: {
-        type: true,
+        status: true,
         amount: true,
       },
     });
     const groupedStats = disbursements.reduce((acc, disbursement) => {
-      const type = disbursement.type;
-      if (!acc[type]) {
-        acc[type] = {
-          id: type,
+      const status = disbursement.status;
+      if (!acc[status]) {
+        acc[status] = {
+          id: status,
           count: 0,
           amount: 0,
         };
       }
-      acc[type].count += 1;
-      acc[type].amount += parseFloat(disbursement.amount || '0');
+      acc[status].count += 1;
+      acc[status].amount += parseFloat(disbursement.amount || '0');
       return acc;
     }, {} as Record<string, { id: string; count: number; amount: number }>);
 
     const result = Object.values(groupedStats);
-    
 
     return result;
   }
 
   async calculateAllStats() {
-    const [totalDisbursement,totalBen] = await Promise.all([
+    const [totalDisbursement, totalBen] = await Promise.all([
       this.calculateDisbursementTotal(),
       this.calculateBeneficiaryTotal(),
     ]);

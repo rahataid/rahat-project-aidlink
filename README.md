@@ -4,7 +4,7 @@
 
 ## Summary
 
-The Rahat Project C2C is a monorepo designed to facilitate a Crypto-2-Crypto Cash Voucher Assistance (CVA) flow. It includes features such as a deposit token feature with a QR code, user roles and permissions with whitelisting for disbursement transactions, disbursement approvals with detailed execution information, and a multi-sig disbursement flow directed back to the safe wallet. This project is dependent on the `rahat-core` project, which must be set up and running before starting the Rahat Project C2C.
+The Rahat Project Aidlink is a monorepo designed to facilitate a Crypto-2-Crypto Cash Voucher Assistance (CVA) flow. It includes features such as a deposit token feature with a QR code, user roles and permissions with whitelisting for disbursement transactions, disbursement approvals with detailed execution information, and a multi-sig disbursement flow directed back to the safe wallet. This project is dependent on the `rahat-core` project, which must be set up and running before starting the Rahat Project Aidlink.
 
 ## Prerequisites
 
@@ -20,10 +20,10 @@ Before beginning, ensure the `rahat-core` project is set up and running by follo
 
 ### Step 1: Clone the Project
 
-Clone the Rahat Project C2C repository using the following command:
+Clone the Rahat Project Aidlink repository using the following command:
 
 ```sh
-git clone git@github.com:rahataid/rahat-project-c2c.git
+git clone git@github.com:rahataid/rahat-project-aidlink.git
 ```
 
 ### Step 2: Navigate to the Project Directory and Bootstrap the Project
@@ -34,6 +34,22 @@ Navigate to the project directory and bootstrap the project using pnpm:
 pnpm bootstrap
 ```
 
+This command will:
+
+<li>Install all dependencies across the monorepo
+<li>Set up project workspaces
+<li>Configure inter-package dependencies
+
+### Step 3: Environment Configuration
+Create and configure environment files
+```
+# Copy environment configuration
+cp .env.example .env
+```
+
+Important: Configure your environment variables to connect with your running rahat-platform instance.
+
+
 ### Step 3: Run the Project
 
 Start the project using the following command:
@@ -41,18 +57,12 @@ Start the project using the following command:
 ```sh
 pnpm start
 ```
+This will start all necessary services for the Aidlink project.
+ 
 
 ## Description
 
 ### Crypto-2-Crypto CVA Flow
-
-#### Deposit Token Feature
-
-- **QR Code Feature:** Consider adding a QR code feature that can be shared. Offer users the option to deposit via wallet or generate a QR code.
-
-#### User Roles and Permissions
-
-- **Whitelisting:** Implement whitelisting for users who can access disbursement transactions.
 
 #### Disbursement Approvals
 
@@ -62,6 +72,6 @@ pnpm start
 
 - **Disbursement Flow:** Identify the flow for directing multi-sig disbursements back to the safe wallet.
 
-By following these instructions, you will be able to set up and run the Rahat Project C2C locally, and leverage its features for Crypto-2-Crypto Cash Voucher Assistance.
+By following these instructions, you will be able to set up and run the Rahat Project Aidlink locally, and leverage its features for Crypto-2-Crypto Cash Voucher Assistance.
 
 ---
