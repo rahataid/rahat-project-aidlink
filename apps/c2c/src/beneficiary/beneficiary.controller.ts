@@ -112,6 +112,15 @@ export class BeneficiaryController {
     const {beneficiaryPhone,limit} = payload;
     return this.beneficiaryService.getBeneficiaryOffRampDetails(beneficiaryPhone,limit);
   }
+
+@MessagePattern({
+    cmd:JOBS.REPORTING.GET_OFFRAMP_SUMMARY,
+    uuid:process.env.PROJECT_ID,
+  })
+  async getBeneficiaryOffRampSummary(){
+    return this.beneficiaryService.getOffRampSummary();
+  }
+
   //******Xcapit End ****//
 
   

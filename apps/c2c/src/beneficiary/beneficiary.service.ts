@@ -12,7 +12,7 @@ import {
 import { lastValueFrom } from 'rxjs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
-import { getOffRampDetails } from '../utils/Xcapit';
+import { getOffRampDetails, getOffRampSummary } from '../utils/Xcapit';
 import { DisbursementMultisigService } from '../disbursement/disbursement.multisig.service';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
@@ -666,5 +666,47 @@ export class BeneficiaryService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async getOffRampSummary(){
+    try{
+      const data = await getOffRampSummary();
+      const offRamped = data?.filter((d)=>{
+       return  d._id.status == 'SUCCESSFUL'
+      })
+
+      const disbursement = await this.prisma.disbursement.findMany({
+        where:{
+          status:'COMPLETED'
+        },
+        select:{
+          amount:true,
+          id:true
+        }
+      })
+      
+      const totalDisbursement = disbursement.reduce((sum, d) => {
+        return sum + Number(d?.amount || 0);
+      }, 0);
+     
+      const totalOffRampAmount = offRamped?.reduce((sum, d) => {
+        return sum + Number(d?.cryptoTotalAmount ||  0);
+      }, 0) || 0;
+
+      const offRampPercentage = totalDisbursement > 0 
+        ? (totalOffRampAmount / totalDisbursement) * 100 
+        : 0;
+
+      const remaningOffRampPercentage = totalDisbursement > 0 ? (totalDisbursement-totalOffRampAmount)/totalDisbursement *100 :0
+
+      return {
+        remaningOffRampPercentage:Number(remaningOffRampPercentage.toFixed(2)),
+        offRampPercentage: Number(offRampPercentage.toFixed(2))
+      };
+    }
+    catch(error){
+      throw new RpcException(error?.response?.data?.error || error?.response?.data)
+    }
+    
   }
 }

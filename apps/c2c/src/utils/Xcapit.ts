@@ -47,3 +47,9 @@ try {   limit = limit || 100;
 }
 
 }
+
+export async function getOffRampSummary(){
+    const axiosInstance = await getAxiiosClient();
+    const response = await axiosInstance.get(`/api/off-ramps/summary`);
+    return response.data;
+}
