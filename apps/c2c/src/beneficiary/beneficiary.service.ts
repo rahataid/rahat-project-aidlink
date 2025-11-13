@@ -287,14 +287,17 @@ export class BeneficiaryService {
         },
       },
     });
+    if (!benfGroup) throw new RpcException('Beneficiary group not found.');
 
     const disbursementAmount = benfGroup?.DisbursementGroup?.reduce(
       (sum, dg) => {
-        return sum + parseFloat(dg.amount || '0');
+        if (dg.Disbursement?.status === 'COMPLETED') {
+          return sum + Number(dg.Disbursement.amount);
+        }
+        return sum;
       },
       0
     );
-    if (!benfGroup) throw new RpcException('Beneficiary group not found.');
 
     const response = await lastValueFrom(
       this.client.send(
@@ -332,30 +335,74 @@ export class BeneficiaryService {
   }
 
   async getAllGroups(dto) {
-    const { page, perPage, sort, order, disableSync, uuid, name } = dto;
-    const orderBy: Record<string, 'asc' | 'desc'> = {};
-    orderBy[sort] = order;
-    let where: any = {
-      deletedAt: null,
-      ...(name && { name: { contains: name, mode: 'insensitive' } }),
-    };
+    try {
+      const { page, perPage, sort, order, disableSync, uuid, name } = dto;
+      const orderBy: Record<string, 'asc' | 'desc'> = {};
+      orderBy[sort] = order;
+      const where: any = {
+        deletedAt: null,
+        ...(name && { name: { contains: name, mode: 'insensitive' } }),
+      };
 
-    const benfGroups = await paginate(
-      this.prisma.beneficiaryGroups,
-      {
-        where: where,
-        orderBy,
-      },
-      {
-        page,
-        perPage,
-      }
-    );
+      const benfGroups = (await paginate(
+        this.prisma.beneficiaryGroups,
+        {
+          where: where,
+          include: {
+            DisbursementGroup: {
+              include: {
+                Disbursement: true,
+              },
+            },
+            _count: {
+              select: {
+                GroupedBeneficiaries: {
+                  where: {
+                    deletedAt: null,
+                  },
+                },
+              },
+            },
+          },
+          orderBy,
+        },
+        {
+          page,
+          perPage,
+        }
+      )) as {
+        data: { DisbursementGroup: any[] }[];
+      };
 
-    return this.client.send(
-      { cmd: 'rahat.jobs.beneficiary.list_group_by_project' },
-      benfGroups
-    );
+      const enrichedData = benfGroups.data.map((group: any) => {
+        const totalCompletedAmount = group.DisbursementGroup.reduce(
+          (sum, item) => {
+            if (item.Disbursement?.status === 'COMPLETED') {
+              return sum + Number(item.Disbursement.amount);
+            }
+            return sum;
+          },
+          0
+        );
+        return {
+          uuid: group?.uuid,
+          updatedAt: group?.updatedAt,
+          name: group?.name,
+          totalBeneficiaries: group?._count?.GroupedBeneficiaries,
+          totalCompletedAmount,
+        };
+      });
+
+      return {
+        ...benfGroups,
+        data: enrichedData,
+      };
+    } catch (error) {
+      console.error('Error fetching beneficiary details:', error);
+      throw new RpcException(
+        'Failed to retrieve beneficiary details. Please try again later.'
+      );
+    }
   }
 
   async getBeneficiaryOffRampDetails(beneficiaryPhone: string, limit: number) {
