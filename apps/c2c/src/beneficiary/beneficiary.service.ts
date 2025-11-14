@@ -715,6 +715,7 @@ export class BeneficiaryService {
       const remaningOffRampPercentage = totalDisbursement > 0 ? (totalDisbursement-totalOffRampAmount)/totalDisbursement *100 :0
 
       return {
+        offRampedAmount: totalOffRampAmount,
         remaningOffRampPercentage:Number(remaningOffRampPercentage.toFixed(2)),
         offRampPercentage: Number(offRampPercentage.toFixed(2))
       };
