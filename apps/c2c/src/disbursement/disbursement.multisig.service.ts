@@ -94,8 +94,8 @@ export class DisbursementMultisigService {
       const decimals = await contract.decimals.staticCall();
       const safeInfo = {
         ...safeDetails,
-        nativeBalance: ethers.formatUnits(balance,decimals),
-        tokenBalance: (ethers.formatUnits(safeBalance,decimals)),
+        nativeBalance: ethers.formatUnits(balance, decimals),
+        tokenBalance: ethers.formatUnits(safeBalance, decimals),
       };
       return safeInfo;
     } catch (err) {
@@ -159,8 +159,13 @@ export class DisbursementMultisigService {
   async getTransactionApprovals(safeTxHash: string) {
     try {
       const { owners } = await this.getOwnersList();
-      const { confirmations, confirmationsRequired, isExecuted, proposer } =
-        await this.getSafeTransaction(safeTxHash);
+      const {
+        confirmations,
+        confirmationsRequired,
+        isExecuted,
+        proposer,
+        executionDate,
+      } = await this.getSafeTransaction(safeTxHash);
       const approvals = owners.map((owner) => {
         const confirmation = confirmations?.find(
           (confirmation) => confirmation.owner === owner
@@ -178,6 +183,7 @@ export class DisbursementMultisigService {
         isExecuted,
         proposer,
         approvalsCount: confirmations.length,
+        executionDate,
       };
     } catch (error) {
       console.log(error);
@@ -224,7 +230,7 @@ export class DisbursementMultisigService {
       const disbursementAmount = disbursements.reduce((sum, d) => {
         return sum + (parseFloat(d.amount) || 0);
       }, 0);
-      const safeBalance = Number(ethers.formatUnits(balance,decimals));
+      const safeBalance = Number(ethers.formatUnits(balance, decimals));
       const totalBalance = Number(safeBalance + disbursementAmount);
       return {
         safeBalance: ((safeBalance / totalBalance) * 100).toFixed(2),

@@ -58,6 +58,7 @@ export const JOBS = {
   REPORTING: {
     LIST: 'rahat.jobs.reporting.list',
     GET: 'rahat.jobs.reporting.get',
+    GET_OFFRAMP_SUMMARY:'rahat.jobs.beneficiary.get_offramp_summary'
   },
   SETTINGS: {
     CREATE: 'rahat.jobs.settings.create',
