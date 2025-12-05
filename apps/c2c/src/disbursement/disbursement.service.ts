@@ -407,6 +407,26 @@ export class DisbursementService {
       const disbursement = await this.rsprisma.disbursement.update({
         where: { id },
         data: { ...updateDisbursementDto },
+        select: {
+          uuid: true,
+          disbursementType: true,
+          amount: true,
+          status: true,
+          DisbursementGroup: {
+            select: {
+              BeneficiaryGroup: {
+                select: {
+                  GroupedBeneficiaries: {
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          DisbursementBeneficiary: true,
+        },
       });
 
       // if (
@@ -436,7 +456,6 @@ export class DisbursementService {
       //     },
       //   });
       // }
-
       if (disbursement.status === DisbursementStatus.COMPLETED) {
         this.eventEmitter.emit(EVENTS.DISBURSEMENT_EMAIL_NOTIFICATION, {
           actionType: 'EXECUTED',
@@ -521,8 +540,7 @@ export class DisbursementService {
           })),
           meta: paginatedResult.meta,
         };
-      } 
-      else if (
+      } else if (
         disbursement.disbursementType === DisbursementTargetType.GROUP
       ) {
         const where: Prisma.DisbursementGroupWhereInput = {
