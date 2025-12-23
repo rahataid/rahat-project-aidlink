@@ -14,7 +14,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
 import { getOffRampDetails, getOffRampSummary } from '../utils/Xcapit';
 import { DisbursementMultisigService } from '../disbursement/disbursement.multisig.service';
-import { DisbursementStatus } from '@prisma/client';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -108,22 +107,12 @@ export class BeneficiaryService {
       );
 
       const benData = data?.data.map((d: any) => {
-        const totalBenCompletedAmount =
-          d?.DisbursementBeneficiary.filter(
-            (item) => item.Disbursement?.status === 'COMPLETED'
-          ).reduce((sum, curr) => sum + Number(curr.amount), 0) || 0;
-
-        const totalGroupCompletedAmount =
-          d?.GroupedBeneficiaries[0]?.beneficiaryGroup?.DisbursementGroup.filter(
-            (item) => item.Disbursement?.status === 'COMPLETED'
-          ).reduce((sum, curr) => sum + Number(curr.amount), 0) || 0;
-
         return {
           uuid: d?.uuid,
           walletAddress: d?.walletAddress,
           createdAt: d?.createdAt,
           updatedAt: d?.updatedAt,
-          amount: totalBenCompletedAmount + totalGroupCompletedAmount,
+          amount: this.calculateTotalDisbursement(d),
         };
       });
 
@@ -553,176 +542,176 @@ export class BeneficiaryService {
   }
 
   async getBeneficiaryLogs(data: any) {
-    try {
-      const { benDetails } = data;
-      if (benDetails.length === 0) {
-        return [];
-      }
-
-      const benUUIDs = benDetails
-        ?.map((item) => item.beneficiaryId)
-        .filter(Boolean);
-
-      if (benUUIDs.length === 0) {
-        throw new Error('No valid benUUIDs found in the data array');
-      }
-
-      const beneficiaryDetails = await this.prisma.beneficiary.findMany({
-        where: {
-          uuid: { in: benUUIDs },
-        },
-        include: {
-          DisbursementBeneficiary: {
-            include: {
-              Disbursement: {
-                select: {
-                  amount: true,
-                },
-              },
-            },
-          },
-          GroupedBeneficiaries: {
-            include: {
-              beneficiaryGroup: {
-                include: {
-                  DisbursementGroup: {
-                    include: {
-                      Disbursement: true,
-                    },
-                  },
-                  _count: {
-                    select: {
-                      GroupedBeneficiaries: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const beneficiaryMap = new Map();
-      beneficiaryDetails.forEach((ben) => {
-        beneficiaryMap.set(ben.uuid, ben);
-      });
-
-      const combinedData = benDetails.map((item) => {
-        const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
-        const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
-
-        if (!beneficiaryDetails) {
-          this.logger.warn(
-            `Beneficiary with UUID ${benUUID} not found in database`
-          );
-          return {
-            ...item,
-            beneficiary: null,
-            error: `Beneficiary with UUID ${benUUID} not found`,
-          };
-        }
-
-        const individualDisbursements =
-          beneficiaryDetails.DisbursementBeneficiary.reduce(
-            (sum, db) => sum + parseFloat(db.amount || '0'),
-            0
-          );
-
-        const groupDisbursements =
-          beneficiaryDetails.GroupedBeneficiaries.reduce((sum, gb) => {
-            const groupDisbAmount =
-              gb.beneficiaryGroup.DisbursementGroup?.reduce((groupSum, dg) => {
-                const totalBeneficiariesInGroup =
-                  gb.beneficiaryGroup._count?.GroupedBeneficiaries || 1;
-                const individualShare =
-                  parseFloat(dg.amount || '0') / totalBeneficiariesInGroup;
-                return Number(groupSum) + Number(individualShare);
-              }, 0) || 0;
-            return sum + groupDisbAmount;
-          }, 0);
-
-        const totalDisbursement =
-          individualDisbursements > 0
-            ? individualDisbursements
-            : groupDisbursements;
-
-        const individualDates = beneficiaryDetails.DisbursementBeneficiary.map(
-          (db) => new Date(db.createdAt)
-        );
-
-        const groupDates = beneficiaryDetails.GroupedBeneficiaries.flatMap(
-          (gb) =>
-            gb.beneficiaryGroup.DisbursementGroup?.map(
-              (dg) => new Date(dg.createdAt)
-            ) || []
-        );
-
-        const lastDisbursementDate =
-          individualDates.length > 0
-            ? new Date(
-                Math.max(...individualDates.map((date) => date.getTime()))
-              )
-            : groupDates.length > 0
-            ? new Date(Math.max(...groupDates.map((date) => date.getTime())))
-            : null;
-
-        return {
-          wallet_Address: item?.Beneficiary?.walletAddress,
-          name: item?.Beneficiary?.pii.name,
-          phone_Number: item?.Beneficiary?.pii.phone,
-          total_Disbursement: totalDisbursement.toString(),
-          last_DisbursementDate: lastDisbursementDate?.toISOString() || null,
-        };
-      });
-      const finalData = combinedData.filter(
-        (item) => Object.keys(item).length > 0
-      );
-      return finalData;
-    } catch (error) {
-      throw error;
+    const { benDetails } = data;
+    if (benDetails.length === 0) {
+      return [];
     }
+
+    const benUUIDs = benDetails
+      ?.map((item) => item.beneficiaryId)
+      .filter(Boolean);
+
+    if (benUUIDs.length === 0) {
+      throw new Error('No valid benUUIDs found in the data array');
+    }
+
+    const beneficiaryDetails = await this.prisma.beneficiary.findMany({
+      where: {
+        uuid: { in: benUUIDs },
+      },
+      include: {
+        DisbursementBeneficiary: {
+          include: {
+            Disbursement: {
+              select: {
+                amount: true,
+                status: true,
+              },
+            },
+          },
+        },
+        GroupedBeneficiaries: {
+          include: {
+            beneficiaryGroup: {
+              include: {
+                DisbursementGroup: {
+                  include: {
+                    Disbursement: true,
+                  },
+                },
+                _count: {
+                  select: {
+                    GroupedBeneficiaries: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const beneficiaryMap = new Map();
+    beneficiaryDetails.forEach((ben) => {
+      beneficiaryMap.set(ben.uuid, ben);
+    });
+
+    const combinedData = benDetails.map((item) => {
+      const benUUID = item.benUUID || item.beneficiaryId || item.uuid;
+      const beneficiaryDetails = beneficiaryMap.get(benUUID) as any;
+
+      if (!beneficiaryDetails) {
+        this.logger.warn(
+          `Beneficiary with UUID ${benUUID} not found in database`
+        );
+        return {
+          ...item,
+          beneficiary: null,
+          error: `Beneficiary with UUID ${benUUID} not found`,
+        };
+      }
+
+      const totalDisbursement =
+        this.calculateTotalDisbursement(beneficiaryDetails);
+
+      const individualDates = beneficiaryDetails.DisbursementBeneficiary.map(
+        (db) => new Date(db.createdAt)
+      );
+
+      const groupDates = beneficiaryDetails.GroupedBeneficiaries.flatMap(
+        (gb) =>
+          gb.beneficiaryGroup.DisbursementGroup?.map(
+            (dg) => new Date(dg.createdAt)
+          ) || []
+      );
+
+      const lastDisbursementDate =
+        individualDates.length > 0
+          ? new Date(Math.max(...individualDates.map((date) => date.getTime())))
+          : groupDates.length > 0
+          ? new Date(Math.max(...groupDates.map((date) => date.getTime())))
+          : null;
+
+      return {
+        wallet_Address: item?.Beneficiary?.walletAddress,
+        name: item?.Beneficiary?.pii.name,
+        phone_Number: item?.Beneficiary?.pii.phone,
+        total_Disbursement: totalDisbursement.toString(),
+        last_DisbursementDate: lastDisbursementDate?.toISOString() || null,
+      };
+    });
+    const finalData = combinedData.filter(
+      (item) => Object.keys(item).length > 0
+    );
+    return finalData;
   }
 
-  async getOffRampSummary(){
-    try{
+  async getOffRampSummary() {
+    try {
       const data = await getOffRampSummary();
-      const offRamped = data?.filter((d)=>{
-       return  d._id.status == 'SUCCESSFUL'
-      })
+      const offRamped = data?.filter((d) => {
+        return d._id.status == 'SUCCESSFUL';
+      });
 
       const disbursement = await this.prisma.disbursement.findMany({
-        where:{
-          status:'COMPLETED'
+        where: {
+          status: 'COMPLETED',
         },
-        select:{
-          amount:true,
-          id:true
-        }
-      })
-      
+        select: {
+          amount: true,
+          id: true,
+        },
+      });
+
       const totalDisbursement = disbursement.reduce((sum, d) => {
         return sum + Number(d?.amount || 0);
       }, 0);
-     
-      const totalOffRampAmount = offRamped?.reduce((sum, d) => {
-        return sum + Number(d?.cryptoTotalAmount ||  0);
-      }, 0) || 0;
 
-      const offRampPercentage = totalDisbursement > 0 
-        ? (totalOffRampAmount / totalDisbursement) * 100 
-        : 0;
+      const totalOffRampAmount =
+        offRamped?.reduce((sum, d) => {
+          return sum + Number(d?.cryptoTotalAmount || 0);
+        }, 0) || 0;
 
-      const remaningOffRampPercentage = totalDisbursement > 0 ? (totalDisbursement-totalOffRampAmount)/totalDisbursement *100 :0
+      const offRampPercentage =
+        totalDisbursement > 0
+          ? (totalOffRampAmount / totalDisbursement) * 100
+          : 0;
+
+      const remaningOffRampPercentage =
+        totalDisbursement > 0
+          ? ((totalDisbursement - totalOffRampAmount) / totalDisbursement) * 100
+          : 0;
 
       return {
         offRampedAmount: totalOffRampAmount,
-        remaningOffRampPercentage:Number(remaningOffRampPercentage.toFixed(2)),
-        offRampPercentage: Number(offRampPercentage.toFixed(2))
+        remaningOffRampPercentage: Number(remaningOffRampPercentage.toFixed(2)),
+        offRampPercentage: Number(offRampPercentage.toFixed(2)),
       };
+    } catch (error) {
+      throw new RpcException(
+        error?.response?.data?.error || error?.response?.data
+      );
     }
-    catch(error){
-      throw new RpcException(error?.response?.data?.error || error?.response?.data)
-    }
-    
+  }
+
+  calculateTotalDisbursement(benfData: any) {
+    const totalBenCompletedAmount =
+      benfData?.DisbursementBeneficiary.filter(
+        (item) => item.Disbursement?.status === 'COMPLETED'
+      ).reduce((sum, curr) => sum + Number(curr.amount), 0) || 0;
+
+    const totalGroupCompletedAmount =
+      benfData?.GroupedBeneficiaries.reduce((sum, gb) => {
+        const groupAmount =
+          gb.beneficiaryGroup?.DisbursementGroup.filter(
+            (item) => item.Disbursement?.status === 'COMPLETED'
+          ).reduce(
+            (groupSum, curr) => groupSum + Number(curr.amount || 0),
+            0
+          ) || 0;
+        return sum + groupAmount;
+      }, 0) || 0;
+
+    return totalBenCompletedAmount + totalGroupCompletedAmount;
   }
 }
