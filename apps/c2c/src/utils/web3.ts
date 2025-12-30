@@ -234,16 +234,12 @@ export const getWalletFromPrivateKey = (privateKey: string, provider?: any) => {
 
 export const getTokenBalance = async (
   model: any,
-  beneficiaryAddress: string
+  beneficiaryAddress: string,
+  alchemyApi:any
 ) => {
   try {
-    const alchemyApi = await model.findMany({
-      where: {
-        name: 'ALCHEMY_API_URL',
-      },
-    });
     const alchemyApiUrl = alchemyApi[0]?.value?.URL;
-    if (!alchemyApiUrl) return 0;
+    if (!alchemyApiUrl) return '0';
     const contractdetails = await getContractByName('RAHATTOKEN', model);
     const tokenAddress = contractdetails.ADDRESS;
 

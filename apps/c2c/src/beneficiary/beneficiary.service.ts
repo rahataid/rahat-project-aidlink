@@ -52,6 +52,11 @@ export class BeneficiaryService {
       const orderBy: Record<string, 'asc' | 'desc'> = {};
       orderBy[sort] = order;
 
+      const alchemyApi = await this.prisma.setting.findMany({
+         where: {
+        name: 'ALCHEMY_API_URL',
+      },
+      });
       const data = await paginate(
         this.prisma.beneficiary,
         {
@@ -112,7 +117,8 @@ export class BeneficiaryService {
         data?.data.map(async (d: any) => {
           const remainingBalanceDetails = await getTokenBalance(
             this.prisma.setting,
-            d?.walletAddress
+            d?.walletAddress,
+            alchemyApi
           );
           return {
             uuid: d?.uuid,
@@ -120,9 +126,9 @@ export class BeneficiaryService {
             createdAt: d?.createdAt,
             updatedAt: d?.updatedAt,
             amount: this.calculateTotalDisbursement(d),
-            remaningBalance: BigInt(
+            remaningBalance: remainingBalanceDetails[0]?.tokenBalance? BigInt(
               remainingBalanceDetails[0]?.tokenBalance
-            )?.toString(),
+            )?.toString() : '0',
           };
         })
       );
