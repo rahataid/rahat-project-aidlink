@@ -14,6 +14,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
 import { getOffRampDetails, getOffRampSummary } from '../utils/Xcapit';
 import { DisbursementMultisigService } from '../disbursement/disbursement.multisig.service';
+import { DisbursementStatus } from '@prisma/client';
+import { getTokenBalance } from '../utils/web3';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -50,6 +52,11 @@ export class BeneficiaryService {
       const orderBy: Record<string, 'asc' | 'desc'> = {};
       orderBy[sort] = order;
 
+      const alchemyApi = await this.prisma.setting.findMany({
+         where: {
+        name: 'ALCHEMY_API_URL',
+      },
+      });
       const data = await paginate(
         this.prisma.beneficiary,
         {
@@ -106,15 +113,25 @@ export class BeneficiaryService {
         }
       );
 
-      const benData = data?.data.map((d: any) => {
-        return {
-          uuid: d?.uuid,
-          walletAddress: d?.walletAddress,
-          createdAt: d?.createdAt,
-          updatedAt: d?.updatedAt,
-          amount: this.calculateTotalDisbursement(d),
-        };
-      });
+      const benData = await Promise.all(
+        data?.data.map(async (d: any) => {
+          const remainingBalanceDetails = await getTokenBalance(
+            this.prisma.setting,
+            d?.walletAddress,
+            alchemyApi
+          );
+          return {
+            uuid: d?.uuid,
+            walletAddress: d?.walletAddress,
+            createdAt: d?.createdAt,
+            updatedAt: d?.updatedAt,
+            amount: this.calculateTotalDisbursement(d),
+            remaningBalance: remainingBalanceDetails[0]?.tokenBalance? BigInt(
+              remainingBalanceDetails[0]?.tokenBalance
+            )?.toString() : '0',
+          };
+        })
+      );
 
       const projectData = {
         data: benData,
@@ -463,8 +480,8 @@ export class BeneficiaryService {
           transactionHash:
             db.transactionHash || db.Disbursement.transactionHash,
           from: db.from,
-          createdAt: db.createdAt,
-          updatedAt: db.updatedAt,
+          createdAt: db.Disbursement.createdAt,
+          updatedAt: db.Disbursement.updatedAt,
           disbursementCategory: 'individual',
         })
       );
@@ -478,8 +495,8 @@ export class BeneficiaryService {
             transactionHash:
               dg.transactionHash || dg.Disbursement.transactionHash,
             from: dg.from,
-            createdAt: dg.createdAt,
-            updatedAt: dg.updatedAt,
+            createdAt: dg.Disbursement.createdAt,
+            updatedAt: dg.Disbursement.updatedAt,
             disbursementCategory: 'group',
           }));
         }

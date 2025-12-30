@@ -8,6 +8,8 @@ import {
   recoverAddress,
 } from 'ethers';
 
+import axios from 'axios';
+
 export { isAddress } from 'ethers';
 
 type IStringArr = string[];
@@ -31,7 +33,7 @@ export async function createContractInstance(contractName: any, model: any) {
   //  Create Provider
   const provider = new JsonRpcProvider(res?.value?.RPCURL);
 
-    const convertToLowerCase = (obj) => {
+  const convertToLowerCase = (obj) => {
     const newObj = {};
     for (const key in obj) {
       const newKey = key.toLowerCase();
@@ -228,7 +230,34 @@ export async function getContractByName(contractName: string, modal: any) {
 
 export const getWalletFromPrivateKey = (privateKey: string, provider?: any) => {
   return new ethers.Wallet(privateKey, provider);
-}
+};
+
+export const getTokenBalance = async (
+  model: any,
+  beneficiaryAddress: string,
+  alchemyApi:any
+) => {
+  try {
+    const alchemyApiUrl = alchemyApi[0]?.value?.URL;
+    if (!alchemyApiUrl) return '0';
+    const contractdetails = await getContractByName('RAHATTOKEN', model);
+    const tokenAddress = contractdetails.ADDRESS;
+
+    const response = await axios.post(alchemyApiUrl, {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'alchemy_getTokenBalances',
+      params: [beneficiaryAddress, [tokenAddress]],
+    });
+    const tokenBalance = response.data.result?.tokenBalances.filter(
+      (balance) =>
+        balance.contractAddress.toLowerCase() === tokenAddress.toLowerCase()
+    );
+    return tokenBalance;
+  } catch (err) {
+    console.error('Error fetching token balance:', err);
+  }
+};
 
 function findValueByKey(data, keyToFind) {
   // Iterate through the array of objects
