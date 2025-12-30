@@ -480,8 +480,8 @@ export class BeneficiaryService {
           transactionHash:
             db.transactionHash || db.Disbursement.transactionHash,
           from: db.from,
-          createdAt: db.createdAt,
-          updatedAt: db.updatedAt,
+          createdAt: db.Disbursement.createdAt,
+          updatedAt: db.Disbursement.updatedAt,
           disbursementCategory: 'individual',
         })
       );
@@ -495,8 +495,8 @@ export class BeneficiaryService {
             transactionHash:
               dg.transactionHash || dg.Disbursement.transactionHash,
             from: dg.from,
-            createdAt: dg.createdAt,
-            updatedAt: dg.updatedAt,
+            createdAt: dg.Disbursement.createdAt,
+            updatedAt: dg.Disbursement.updatedAt,
             disbursementCategory: 'group',
           }));
         }
