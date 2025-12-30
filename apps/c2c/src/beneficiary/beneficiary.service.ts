@@ -14,6 +14,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EVENTS } from '@rahataid/c2c-extensions/constants';
 import { getOffRampDetails, getOffRampSummary } from '../utils/Xcapit';
 import { DisbursementMultisigService } from '../disbursement/disbursement.multisig.service';
+import { DisbursementStatus } from '@prisma/client';
+import { getTokenBalance } from '../utils/web3';
 
 const paginate: PaginatorTypes.PaginateFunction = paginator({ perPage: 20 });
 
@@ -106,15 +108,24 @@ export class BeneficiaryService {
         }
       );
 
-      const benData = data?.data.map((d: any) => {
-        return {
-          uuid: d?.uuid,
-          walletAddress: d?.walletAddress,
-          createdAt: d?.createdAt,
-          updatedAt: d?.updatedAt,
-          amount: this.calculateTotalDisbursement(d),
-        };
-      });
+      const benData = await Promise.all(
+        data?.data.map(async (d: any) => {
+          const remainingBalanceDetails = await getTokenBalance(
+            this.prisma.setting,
+            d?.walletAddress
+          );
+          return {
+            uuid: d?.uuid,
+            walletAddress: d?.walletAddress,
+            createdAt: d?.createdAt,
+            updatedAt: d?.updatedAt,
+            amount: this.calculateTotalDisbursement(d),
+            remaningBalance: BigInt(
+              remainingBalanceDetails[0]?.tokenBalance
+            )?.toString(),
+          };
+        })
+      );
 
       const projectData = {
         data: benData,
