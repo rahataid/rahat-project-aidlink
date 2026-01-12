@@ -756,7 +756,10 @@ export class BeneficiaryService {
             toDate
           );
 
-          return benfOfframpDetail;
+          if (benfOfframpDetail?.length > 0) {
+            return benfOfframpDetail;
+          }
+          return null;
         } catch (error) {
           this.logger.error(
             `Failed to fetch off-ramp details for beneficiary ${ben.Beneficiary.pii.name}: ${error?.response?.data?.error}`
