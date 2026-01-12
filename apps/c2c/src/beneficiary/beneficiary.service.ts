@@ -53,9 +53,9 @@ export class BeneficiaryService {
       orderBy[sort] = order;
 
       const alchemyApi = await this.prisma.setting.findMany({
-         where: {
-        name: 'ALCHEMY_API_URL',
-      },
+        where: {
+          name: 'ALCHEMY_API_URL',
+        },
       });
       const data = await paginate(
         this.prisma.beneficiary,
@@ -126,9 +126,9 @@ export class BeneficiaryService {
             createdAt: d?.createdAt,
             updatedAt: d?.updatedAt,
             amount: this.calculateTotalDisbursement(d),
-            remaningBalance: remainingBalanceDetails[0]?.tokenBalance? BigInt(
-              remainingBalanceDetails[0]?.tokenBalance
-            )?.toString() : '0',
+            remaningBalance: remainingBalanceDetails[0]?.tokenBalance
+              ? BigInt(remainingBalanceDetails[0]?.tokenBalance)?.toString()
+              : '0',
           };
         })
       );
@@ -730,5 +730,44 @@ export class BeneficiaryService {
       }, 0) || 0;
 
     return totalBenCompletedAmount + totalGroupCompletedAmount;
+  }
+
+  async getBeneficiarysProjectDetails(payload: any) {
+    this.logger.log('Getting beneficiarys project details');
+    const { benDetails } = payload;
+    const fromDate = payload?.payload?.fromDate;
+    const toDate = payload?.payload?.toDate;
+
+    if (!benDetails || benDetails.length === 0) {
+      throw new RpcException('No beneficiary details found');
+    }
+
+    if (!fromDate || !toDate) {
+      throw new RpcException('From date and to date are required');
+    }
+
+    const benfOfframpDetails = await Promise.all(
+      benDetails.map(async (ben) => {
+        try {
+          const benfOfframpDetail = await getOffRampDetails(
+            ben.Beneficiary.pii.phone,
+            100,
+            fromDate,
+            toDate
+          );
+
+          return benfOfframpDetail;
+        } catch (error) {
+          this.logger.error(
+            `Failed to fetch off-ramp details for beneficiary ${ben.Beneficiary.pii.name}: ${error?.response?.data?.error}`
+          );
+          return null; // keep Promise.all from failing
+        }
+      })
+    );
+
+    // remove failed ones
+    const filtered = benfOfframpDetails.filter(Boolean);
+    return filtered;
   }
 }
