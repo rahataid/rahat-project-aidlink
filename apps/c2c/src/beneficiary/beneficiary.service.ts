@@ -732,8 +732,8 @@ export class BeneficiaryService {
     return totalBenCompletedAmount + totalGroupCompletedAmount;
   }
 
-  async getBeneficiarysProjectDetails(payload: any) {
-    this.logger.log('Getting beneficiarys project details');
+  async getBeneficiariesProjectDetails(payload: any) {
+    this.logger.log('Getting beneficiaries project details');
     const { benDetails } = payload;
     const fromDate = payload?.payload?.fromDate;
     const toDate = payload?.payload?.toDate;
