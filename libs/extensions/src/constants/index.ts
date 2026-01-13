@@ -46,6 +46,8 @@ export const JOBS = {
     GET_BEN_REPORTING_LOGS: 'rahat.jobs.beneficiary.get_ben_reporting_logs',
     GET_OFFRAMP_DETAILS: 'rahat.jobs.beneficiary.get_offramp_details',
     GET_BEN_DISBURSEMENT: 'rahat.jobs.beneficiary.get_ben_disbursement_details',
+    GET_BENEFICIARYS_PROJECT_DETAILS:
+      'rahat.jobs.beneficiary.getBeneficiarysProjectDetails',
   },
 
   PROJECT: {
@@ -58,7 +60,7 @@ export const JOBS = {
   REPORTING: {
     LIST: 'rahat.jobs.reporting.list',
     GET: 'rahat.jobs.reporting.get',
-    GET_OFFRAMP_SUMMARY:'rahat.jobs.beneficiary.get_offramp_summary'
+    GET_OFFRAMP_SUMMARY: 'rahat.jobs.beneficiary.get_offramp_summary',
   },
   SETTINGS: {
     CREATE: 'rahat.jobs.settings.create',

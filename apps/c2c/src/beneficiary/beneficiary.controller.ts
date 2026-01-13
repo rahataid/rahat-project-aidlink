@@ -92,49 +92,53 @@ export class BeneficiaryController {
 
   //******Reporting Start *//
   @MessagePattern({
-    cmd:JOBS.BENEFICIARY.GET_BEN_REPORTING_LOGS,
+    cmd: JOBS.BENEFICIARY.GET_BEN_REPORTING_LOGS,
     uuid: process.env.PROJECT_ID,
   })
-
-  async getBeneficiaryLogs(payload){
+  async getBeneficiaryLogs(payload) {
     return this.beneficiaryService.getBeneficiaryLogs(payload);
   }
 
   //******Reporting End *//
 
-
   //******Xcapit Start ****//
   @MessagePattern({
-    cmd:JOBS.BENEFICIARY.GET_OFFRAMP_DETAILS,
-    uuid:process.env.PROJECT_ID,
+    cmd: JOBS.BENEFICIARY.GET_OFFRAMP_DETAILS,
+    uuid: process.env.PROJECT_ID,
   })
-  async getBeneficiaryOffRampDetails(payload){
-    const {beneficiaryPhone,limit} = payload;
-    return this.beneficiaryService.getBeneficiaryOffRampDetails(beneficiaryPhone,limit);
+  async getBeneficiaryOffRampDetails(payload) {
+    const { beneficiaryPhone, limit } = payload;
+    return this.beneficiaryService.getBeneficiaryOffRampDetails(
+      beneficiaryPhone,
+      limit
+    );
   }
 
-@MessagePattern({
-    cmd:JOBS.REPORTING.GET_OFFRAMP_SUMMARY,
-    uuid:process.env.PROJECT_ID,
+  @MessagePattern({
+    cmd: JOBS.REPORTING.GET_OFFRAMP_SUMMARY,
+    uuid: process.env.PROJECT_ID,
   })
-  async getBeneficiaryOffRampSummary(){
+  async getBeneficiaryOffRampSummary() {
     return this.beneficiaryService.getOffRampSummary();
   }
 
   //******Xcapit End ****//
 
-  
   //********Disbursement details *********//
   @MessagePattern({
-    cmd:JOBS.BENEFICIARY.GET_BEN_DISBURSEMENT,
-    uuid:process.env.PROJECT_ID,
+    cmd: JOBS.BENEFICIARY.GET_BEN_DISBURSEMENT,
+    uuid: process.env.PROJECT_ID,
   })
-  async getBenDisbursementDetails(payload){
-    console.log(payload)
+  async getBenDisbursementDetails(payload) {
     return this.beneficiaryService.getBenDisbursementDetails(payload);
   }
   //************Disbursement End **********//
 
-  
-
+  @MessagePattern({
+    cmd: JOBS.BENEFICIARY.GET_BENEFICIARYS_PROJECT_DETAILS,
+    uuid: process.env.PROJECT_ID,
+  })
+  async getBeneficiariesProjectDetails(payload) {
+    return this.beneficiaryService.getBeneficiariesProjectDetails(payload);
+  }
 }
