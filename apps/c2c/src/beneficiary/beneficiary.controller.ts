@@ -138,7 +138,7 @@ export class BeneficiaryController {
     cmd: JOBS.BENEFICIARY.GET_BENEFICIARYS_PROJECT_DETAILS,
     uuid: process.env.PROJECT_ID,
   })
-  async getBeneficiarysProjectDetails(payload) {
+  async getBeneficiariesProjectDetails(payload) {
     return this.beneficiaryService.getBeneficiariesProjectDetails(payload);
   }
 }
