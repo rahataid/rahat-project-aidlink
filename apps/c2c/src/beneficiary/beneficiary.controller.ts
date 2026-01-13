@@ -135,7 +135,7 @@ export class BeneficiaryController {
   //************Disbursement End **********//
 
   @MessagePattern({
-    cmd: JOBS.BENEFICIARY.GET_BENEFICIARYS_PROJECT_DETAILS,
+    cmd: JOBS.BENEFICIARY.GET_BENEFICIARIES_PROJECT_DETAILS,
     uuid: process.env.PROJECT_ID,
   })
   async getBeneficiariesProjectDetails(payload) {
